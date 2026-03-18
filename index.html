@@ -1493,7 +1493,7 @@ function startGame(){
   if(isMobile){
     // Mobile: all touch controls PLUS tilt steering + auto-drive bonus
     document.getElementById('tilt-ui').style.display = 'block';
-    document.getElementById('ctrl-hint').textContent = 'TILT or Joystick to steer  |  GAS / BRK buttons';
+    document.getElementById('ctrl-hint').textContent = 'TILT or Joystick to steer  |  GAS to accelerate  |  BRK to slow';
   } else {
     document.getElementById('tilt-ui').style.display = 'none';
     document.getElementById('ctrl-hint').textContent = 'WASD / Arrow Keys \u00a0|\u00a0 Left=Steer \u00a0|\u00a0 Right=GAS';
@@ -1529,22 +1529,23 @@ var keys = {};
 document.addEventListener('keydown', function(e){ keys[e.code] = true; });
 document.addEventListener('keyup',   function(e){ keys[e.code] = false; });
 
-var joy = {active:false, dx:0, startX:0};
+var joy = {active:false, dx:0, dy:0, startX:0, startY:0};
 var joyKnob = document.getElementById('joy-knob');
 document.getElementById('joy-zone').addEventListener('touchstart', function(e){
   e.preventDefault();
   var t = e.touches[0];
-  joy.active = true; joy.startX = t.clientX; joy.dx = 0;
+  joy.active = true; joy.startX = t.clientX; joy.startY = t.clientY; joy.dx = 0; joy.dy = 0;
 }, {passive:false});
 document.getElementById('joy-zone').addEventListener('touchmove', function(e){
   e.preventDefault();
   if(!joy.active) return;
   var t = e.touches[0];
   joy.dx = Math.max(-1, Math.min(1, (t.clientX - joy.startX) / 50));
-  joyKnob.style.transform = 'translate(calc(-50% + '+(joy.dx*28)+'px), -50%)';
+  joy.dy = Math.max(-1, Math.min(1, (t.clientY - joy.startY) / 50));
+  joyKnob.style.transform = 'translate(calc(-50% + '+(joy.dx*28)+'px), calc(-50% + '+(joy.dy*28)+'px))';
 }, {passive:false});
 document.getElementById('joy-zone').addEventListener('touchend', function(){
-  joy.active = false; joy.dx = 0;
+  joy.active = false; joy.dx = 0; joy.dy = 0;
   joyKnob.style.transform = 'translate(-50%, -50%)';
 });
 
@@ -1619,9 +1620,9 @@ function animate(ts){
   if(G.state === 'playing'){
     var turnLeft  = keys['ArrowLeft']  || keys['KeyA'];
     var turnRight = keys['ArrowRight'] || keys['KeyD'];
-    var brakeOn   = keys['ArrowDown']  || keys['KeyS'] || touch.brake;
-    // Mobile: car drives automatically — tilt phone to steer, tap BRK to slow
-    var gasOn = keys['ArrowUp'] || keys['KeyW'] || touch.gas || (isMobile && !brakeOn);
+    // joy.dy < -0.25 = stick pushed up = gas | joy.dy > 0.25 = stick pulled down = brake
+    var brakeOn   = keys['ArrowDown']  || keys['KeyS'] || touch.brake || (joy.active && joy.dy >  0.25);
+    var gasOn     = keys['ArrowUp']    || keys['KeyW'] || touch.gas   || (joy.active && joy.dy < -0.25);
 
     var steerAmt = 0;
     if(joy.active){
