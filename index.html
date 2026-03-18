@@ -215,10 +215,83 @@ var fill = new THREE.DirectionalLight(0x6050c0, 0.28);
 fill.position.set(-80, 40, 80);
 scene.add(fill);
 
+// ─── ATMOSPHERE PRESETS ───────────────────────────────────────────────────────
+// Each lap triggers a smooth transition to a new atmosphere
+var ATMOSPHERES = [
+  // Lap 1 — Sunset (starting atmosphere)
+  {fogColor:0xc05818, fogDens:0.009, hemiSky:0xffcc78, hemiGnd:0x7a4420, sunCol:0xffaa40, sunInt:4.0, fillCol:0x6050c0, fillInt:0.28, skyTop:0x080828, skyMid:0xd04808, skyBot:0x905020},
+  // Lap 2 — Night
+  {fogColor:0x040410, fogDens:0.016, hemiSky:0x101048, hemiGnd:0x040410, sunCol:0x1828a0, sunInt:0.5, fillCol:0x0828d0, fillInt:0.55, skyTop:0x000006, skyMid:0x04041a, skyBot:0x080818},
+  // Lap 3 — Dawn
+  {fogColor:0xa0b8d8, fogDens:0.007, hemiSky:0x90b0ff, hemiGnd:0x304868, sunCol:0xff7888, sunInt:3.2, fillCol:0x4060d0, fillInt:0.32, skyTop:0x182448, skyMid:0xff6878, skyBot:0xf0b888},
+  // Lap 4+ — Storm
+  {fogColor:0x0c1418, fogDens:0.022, hemiSky:0x243040, hemiGnd:0x0c1018, sunCol:0x607888, sunInt:1.0, fillCol:0x283848, fillInt:0.10, skyTop:0x040810, skyMid:0x101820, skyBot:0x0a1218},
+];
+var atmosIdx    = 0;   // current atmosphere index
+var atmosLerp   = 1.0; // 0=start of transition, 1=complete
+var atmosFrom   = ATMOSPHERES[0];
+var atmosTo     = ATMOSPHERES[0];
+// Color helpers for lerping
+var _ac1 = new THREE.Color(), _ac2 = new THREE.Color();
+function lerpAtmos(dt){
+  if(atmosLerp >= 1) return;
+  atmosLerp = Math.min(1, atmosLerp + dt / 3.5); // 3.5 sec transition
+  var k = atmosLerp;
+  // Fog
+  _ac1.setHex(atmosFrom.fogColor); _ac2.setHex(atmosTo.fogColor);
+  scene.fog.color.copy(_ac1).lerp(_ac2, k);
+  scene.fog.density = atmosFrom.fogDens + (atmosTo.fogDens - atmosFrom.fogDens) * k;
+  // Hemi light
+  _ac1.setHex(atmosFrom.hemiSky); _ac2.setHex(atmosTo.hemiSky);
+  hemi.color.copy(_ac1).lerp(_ac2, k);
+  _ac1.setHex(atmosFrom.hemiGnd); _ac2.setHex(atmosTo.hemiGnd);
+  hemi.groundColor.copy(_ac1).lerp(_ac2, k);
+  // Sun light
+  _ac1.setHex(atmosFrom.sunCol); _ac2.setHex(atmosTo.sunCol);
+  sun.color.copy(_ac1).lerp(_ac2, k);
+  sun.intensity = atmosFrom.sunInt + (atmosTo.sunInt - atmosFrom.sunInt) * k;
+  // Fill light
+  _ac1.setHex(atmosFrom.fillCol); _ac2.setHex(atmosTo.fillCol);
+  fill.color.copy(_ac1).lerp(_ac2, k);
+  fill.intensity = atmosFrom.fillInt + (atmosTo.fillInt - atmosFrom.fillInt) * k;
+  // Sky shader uniforms
+  if(skyMat){
+    _ac1.setHex(atmosFrom.skyTop); _ac2.setHex(atmosTo.skyTop);
+    skyMat.uniforms.topC.value.copy(_ac1).lerp(_ac2, k);
+    _ac1.setHex(atmosFrom.skyMid); _ac2.setHex(atmosTo.skyMid);
+    skyMat.uniforms.midC.value.copy(_ac1).lerp(_ac2, k);
+    _ac1.setHex(atmosFrom.skyBot); _ac2.setHex(atmosTo.skyBot);
+    skyMat.uniforms.botC.value.copy(_ac1).lerp(_ac2, k);
+  }
+}
+function triggerAtmosphere(lapNum){
+  var nextIdx = Math.min(lapNum - 1, ATMOSPHERES.length - 1);
+  if(nextIdx === atmosIdx) return;
+  atmosFrom = ATMOSPHERES[atmosIdx];
+  atmosTo   = ATMOSPHERES[nextIdx];
+  atmosIdx  = nextIdx;
+  atmosLerp = 0;
+}
+function resetAtmosphere(){
+  atmosIdx = 0; atmosLerp = 1;
+  atmosFrom = atmosTo = ATMOSPHERES[0];
+  var a = ATMOSPHERES[0];
+  scene.fog.color.setHex(a.fogColor); scene.fog.density = a.fogDens;
+  hemi.color.setHex(a.hemiSky); hemi.groundColor.setHex(a.hemiGnd);
+  sun.color.setHex(a.sunCol); sun.intensity = a.sunInt;
+  fill.color.setHex(a.fillCol); fill.intensity = a.fillInt;
+  if(skyMat){
+    skyMat.uniforms.topC.value.setHex(a.skyTop);
+    skyMat.uniforms.midC.value.setHex(a.skyMid);
+    skyMat.uniforms.botC.value.setHex(a.skyBot);
+  }
+}
+
 // ─── SKY ─────────────────────────────────────────────────────────────────────
+var skyMat; // exposed globally for atmosphere transitions
 (function(){
   var skyGeo = new THREE.SphereGeometry(340, 12, 8);
-  var skyMat = new THREE.ShaderMaterial({
+  skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms: {
       topC: {value: new THREE.Color(0x080828)},
@@ -1190,6 +1263,60 @@ var shimMat  = new THREE.PointsMaterial({color:0xffb850, size:0.16, transparent:
 var shimmer  = new THREE.Points(shimGeo, shimMat);
 carGroup.add(shimmer);
 
+// ─── OBSTACLES ───────────────────────────────────────────────────────────────
+// Traffic cones — dodge them or lose speed
+var cones = [];
+(function(){
+  var coneGeo  = new THREE.ConeGeometry(0.38, 0.9, 8);
+  var bandGeo  = new THREE.CylinderGeometry(0.40, 0.40, 0.18, 8);
+  var coneMat  = new THREE.MeshLambertMaterial({color:0xff5500});
+  var bandMat  = new THREE.MeshLambertMaterial({color:0xffffff});
+  // Pick 12 evenly-spaced spline indices, skip first 10 pts (near start line)
+  var step = Math.floor(ROAD_SEG / 12);
+  for(var ci=0; ci<12; ci++){
+    var idx = ((ci * step) + 10) % ROAD_SEG;
+    var sp  = splinePts[idx];
+    var tn  = splineTans[idx];
+    // Alternate left/right of centre, ±(6 to 10) units
+    var side   = (ci % 2 === 0) ? 1 : -1;
+    var latOff = side * (6 + Math.random() * 4);
+    var cx = sp.x - tn.z * latOff;
+    var cz = sp.z + tn.x * latOff;
+    var grp = new THREE.Group();
+    var body = new THREE.Mesh(coneGeo, coneMat);
+    body.position.y = 0.45;
+    var band = new THREE.Mesh(bandGeo, bandMat);
+    band.position.y = 0.28;
+    grp.add(body); grp.add(band);
+    grp.position.set(cx, 0, cz);
+    scene.add(grp);
+    cones.push({grp:grp, ox:cx, oz:cz, alive:true, respawnT:0});
+  }
+})();
+
+// Oil slicks — drive over one and your steering goes haywire for 2 seconds
+var oilSlicks = [];
+var oilT = 0; // active oil skid timer
+(function(){
+  var oilGeo = new THREE.CircleGeometry(2.2, 14);
+  var oilMat = new THREE.MeshLambertMaterial({color:0x1a2010, transparent:true, opacity:0.75});
+  var step = Math.floor(ROAD_SEG / 6);
+  for(var oi=0; oi<6; oi++){
+    var idx = ((oi * step) + 30) % ROAD_SEG;
+    var sp  = splinePts[idx];
+    var tn  = splineTans[idx];
+    var side   = (oi % 2 === 0) ? -1 : 1;
+    var latOff = side * (Math.random() * 5);
+    var ox = sp.x - tn.z * latOff;
+    var oz = sp.z + tn.x * latOff;
+    var mesh = new THREE.Mesh(oilGeo, oilMat.clone());
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(ox, 0.04, oz);
+    scene.add(mesh);
+    oilSlicks.push({mesh:mesh, ox:ox, oz:oz});
+  }
+})();
+
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 var G = {state:'attract', time:GAME_DUR, score:0, shine:0, n:0, laps:0};
 var carSpeed = 0, carYaw = 0;
@@ -1384,6 +1511,30 @@ function collectSound(){
   }
 }
 
+function bumpSound(){
+  if(!audioCtx) return;
+  // Low thud — cone hit
+  var o = audioCtx.createOscillator();
+  var gn = audioCtx.createGain();
+  o.type = 'sawtooth'; o.frequency.value = 120;
+  o.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.18);
+  o.connect(gn); gn.connect(audioCtx.destination);
+  gn.gain.setValueAtTime(0.35, audioCtx.currentTime);
+  gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+  o.start(); o.stop(audioCtx.currentTime + 0.22);
+}
+function oilSkidSound(){
+  if(!audioCtx) return;
+  // High-pitched long screech
+  var o = audioCtx.createOscillator();
+  var gn = audioCtx.createGain();
+  o.type = 'sawtooth'; o.frequency.value = 1400;
+  o.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.6);
+  o.connect(gn); gn.connect(audioCtx.destination);
+  gn.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+  o.start(); o.stop(audioCtx.currentTime + 0.6);
+}
 function startFanfare(){
   if(!audioCtx) return;
   var notes = [523, 659, 784, 1047, 1319];
@@ -1471,9 +1622,15 @@ function startGame(){
     try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
   }
   G.state = 'playing'; G.time = GAME_DUR; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0;
-  carSpeed = 0; carYaw = 0;
+  carSpeed = 0; carYaw = 0; oilT = 0;
   carX = splinePts[0].x; carZ = splinePts[0].z;
   prevLapSign = 0;
+  resetAtmosphere();
+  // Reset cones to original positions
+  for(var ci=0; ci<cones.length; ci++){
+    var cn = cones[ci]; cn.alive = true; cn.respawnT = 0;
+    cn.grp.visible = true; cn.grp.position.set(cn.ox, 0, cn.oz); cn.grp.rotation.set(0,0,0);
+  }
   applyShine();
   for(var i=0; i<pickups.length; i++){
     pickups[i].alive = true; pickups[i].group.visible = true; pickups[i].respawnT = 0;
@@ -1608,6 +1765,9 @@ function animate(ts){
   }
 
   // Shimmer
+  // Smooth atmosphere transition every frame
+  lerpAtmos(dt);
+
   if(G.shine > 0){
     var shimAttr = shimGeo.attributes.position;
     for(var si2=0; si2<80; si2++){
@@ -1647,7 +1807,9 @@ function animate(ts){
     else             carSpeed *= (1 - dt*3.2);
 
     if(Math.abs(carSpeed) > 0.4){
-      carYaw -= steerAmt * TURN_SPD * dt * (carSpeed / MAX_SPD) * 1.2;
+      // Oil slick: randomise steering for skid effect
+      var effectiveSteer = oilT > 0 ? steerAmt + (Math.random()-0.5)*1.8 : steerAmt;
+      carYaw -= effectiveSteer * TURN_SPD * dt * (carSpeed / MAX_SPD) * 1.2;
     }
 
     var sinYaw = Math.sin(carYaw), cosYaw = Math.cos(carYaw);
@@ -1682,10 +1844,54 @@ function animate(ts){
     if(prevLapSign < 0 && proj >= 0){
       G.laps++;
       document.getElementById('hud-laps').textContent = G.laps;
-      showNotif('LAP ' + G.laps + '!', '#00b84a');
+      var lapMsgs = ['LAP 2 — NIGHT! 🌙','LAP 3 — DAWN! 🌅','LAP 4 — STORM! ⛈'];
+      var lapMsg  = lapMsgs[G.laps - 2] || ('LAP ' + G.laps + '!');
+      showNotif(lapMsg, '#00b84a');
       beep(660, 0.12, 0.18);
+      triggerAtmosphere(G.laps); // switch atmosphere on new lap
     }
     prevLapSign = proj;
+
+    // ── Cone collision ────────────────────────────────────────────────────────
+    for(var coi=0; coi<cones.length; coi++){
+      var cn = cones[coi];
+      if(!cn.alive){
+        cn.respawnT -= dt;
+        if(cn.respawnT <= 0){
+          cn.alive = true; cn.grp.visible = true;
+          cn.grp.position.set(cn.ox, 0, cn.oz); cn.grp.rotation.set(0,0,0);
+        }
+        continue;
+      }
+      var cdx = carX - cn.grp.position.x, cdz = carZ - cn.grp.position.z;
+      if(cdx*cdx + cdz*cdz < 2.8*2.8){
+        // Hit! Knock cone away, penalty, shake
+        cn.alive = false; cn.respawnT = 12;
+        cn.grp.position.set(cn.ox + (Math.random()-0.5)*8, 0, cn.oz + (Math.random()-0.5)*8);
+        cn.grp.rotation.z = Math.PI / 2; // cone falls over
+        cn.grp.visible = false; // hide knocked cone
+        carSpeed *= 0.52;
+        shakeAmt = 0.22; shakeT = 0.5;
+        bumpSound();
+        showNotif('CONE HIT! -Speed', '#ff5500');
+      }
+    }
+
+    // ── Oil slick collision ───────────────────────────────────────────────────
+    if(oilT <= 0){
+      for(var oi2=0; oi2<oilSlicks.length; oi2++){
+        var os = oilSlicks[oi2];
+        var odx = carX - os.ox, odz = carZ - os.oz;
+        if(odx*odx + odz*odz < 3.0*3.0){
+          oilT = 2.2;
+          oilSkidSound();
+          showNotif('OIL SLICK! 💧', '#88ffcc');
+          break;
+        }
+      }
+    } else {
+      oilT -= dt;
+    }
 
     carGroup.position.set(carX, 0, carZ);
     carGroup.rotation.y = carYaw;
