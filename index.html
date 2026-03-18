@@ -776,85 +776,117 @@ buildBarriers();
 
 // ─── BILLBOARDS ──────────────────────────────────────────────────────────────
 (function(){
-  function bbDesign0(ctx, W, H){
-    ctx.fillStyle='#003020'; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#00b84a'; ctx.fillRect(0,0,W,H*0.08); ctx.fillRect(0,H*0.92,W,H*0.08);
-    ctx.font='bold '+Math.floor(H*0.32)+'px Arial Black';
-    ctx.fillStyle='#00b84a'; ctx.textAlign='center';
-    ctx.fillText('TURTLE WAX', W/2, H*0.55);
-    ctx.font='bold '+Math.floor(H*0.14)+'px Arial';
+  var W=1024, H=512;
+  var loader = new THREE.TextureLoader();
+  var PRODUCT_IMGS = ['images/p1.png','images/p2.png'];
+
+  // Draw a branded frame over the product image canvas
+  function drawFrame(ctx, W, H, label){
+    // Green top bar
+    ctx.fillStyle='#00b84a';
+    ctx.fillRect(0, 0, W, H*0.10);
+    // Bottom bar
+    ctx.fillStyle='#003820';
+    ctx.fillRect(0, H*0.88, W, H*0.12);
+    // Turtle Wax logo text top-left
+    ctx.font='bold '+Math.floor(H*0.075)+'px Arial Black';
+    ctx.fillStyle='#ffffff';
+    ctx.textAlign='left';
+    ctx.fillText('🐢 TURTLE WAX', W*0.03, H*0.075);
+    // Bottom label
+    ctx.font='bold '+Math.floor(H*0.072)+'px Arial Black';
     ctx.fillStyle='#ffcc00';
-    ctx.fillText('SHINE LIKE NEW', W/2, H*0.78);
+    ctx.textAlign='center';
+    ctx.fillText(label, W/2, H*0.965);
+    // Green border outline
+    ctx.strokeStyle='#00b84a';
+    ctx.lineWidth=8;
+    ctx.strokeRect(4, 4, W-8, H-8);
   }
-  function bbDesign1(ctx, W, H){
-    var g = ctx.createLinearGradient(0,0,W,H);
-    g.addColorStop(0,'#001a40'); g.addColorStop(1,'#003060');
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // Fallback canvas design if image fails
+  function drawFallback(ctx, W, H, idx){
+    var bg = idx===0 ? '#003820' : '#001a30';
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    drawFrame(ctx, W, H, idx===0 ? 'SHINE LIKE NEW' : '#RoadTripUnited2026');
     ctx.font='bold '+Math.floor(H*0.22)+'px Arial Black';
-    ctx.fillStyle='#00bbff'; ctx.textAlign='center';
-    ctx.fillText('ICE WAX', W/2, H*0.42);
-    ctx.font=Math.floor(H*0.13)+'px Arial';
-    ctx.fillStyle='#ffffff';
-    ctx.fillText('ULTIMATE PROTECTION', W/2, H*0.64);
-    ctx.font='bold '+Math.floor(H*0.10)+'px Arial';
-    ctx.fillStyle='#00b84a';
-    ctx.fillText('#RoadTripUnited2026', W/2, H*0.85);
+    ctx.fillStyle='#00b84a'; ctx.textAlign='center';
+    ctx.fillText('TURTLE WAX', W/2, H*0.60);
   }
-  function bbDesign2(ctx, W, H){
-    var g2 = ctx.createLinearGradient(0,0,0,H);
-    g2.addColorStop(0,'#1a0040'); g2.addColorStop(1,'#0a0020');
-    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
-    ctx.font='bold '+Math.floor(H*0.18)+'px Arial Black';
-    ctx.fillStyle='#aa40ff'; ctx.textAlign='center';
-    ctx.fillText('HYBRID', W/2, H*0.38);
-    ctx.fillText('CERAMIC', W/2, H*0.58);
-    ctx.font=Math.floor(H*0.11)+'px Arial';
-    ctx.fillStyle='#ffffff';
-    ctx.fillText('NANO TECH FORMULA', W/2, H*0.80);
-  }
-  function bbDesign3(ctx, W, H){
-    ctx.fillStyle='#201000'; ctx.fillRect(0,0,W,H);
-    ctx.font='bold '+Math.floor(H*0.16)+'px Arial Black';
-    ctx.fillStyle='#ffcc00'; ctx.textAlign='center';
-    ctx.fillText('ULTIMATE WAX', W/2, H*0.40);
-    ctx.font=Math.floor(H*0.12)+'px Arial';
-    ctx.fillStyle='#ffffff';
-    ctx.fillText('#1 IN THE WORLD', W/2, H*0.60);
-    ctx.font='bold '+Math.floor(H*0.10)+'px Arial';
-    ctx.fillStyle='#00b84a';
-    ctx.fillText('TURTLEWAX.COM', W/2, H*0.80);
-  }
-  var bbFns = [bbDesign0, bbDesign1, bbDesign2, bbDesign3];
-  for(var b=0; b<12; b++){
-    var bt  = b / 12;
-    var bpt = trackCurve.getPoint(bt);
-    var btan= trackCurve.getTangent(bt);
-    var bnx = btan.z, bnz = -btan.x;
-    var bside = (b % 2 === 0) ? 1 : -1;
-    var BDIST = ROAD_HW + 6 + Math.random()*4;
-    var bbx   = bpt.x + bnx*BDIST*bside;
-    var bbz   = bpt.z + bnz*BDIST*bside;
-    var bbc   = document.createElement('canvas');
-    bbc.width = 512; bbc.height = 256;
-    var bctx  = bbc.getContext('2d');
-    bbFns[b % bbFns.length](bctx, 512, 256);
-    var bbtex = new THREE.CanvasTexture(bbc);
+
+  var labels = ['SHINE LIKE NEW ✨','#RoadTripUnited2026 🏎'];
+
+  function spawnBillboard(b, tex){
+    var bt   = b / 12;
+    var bpt  = trackCurve.getPoint(bt);
+    var btan = trackCurve.getTangent(bt);
+    var bnx  = btan.z, bnz = -btan.x;
+    var bside= (b % 2 === 0) ? 1 : -1;
+    var BDIST= ROAD_HW + 6 + Math.random()*3;
+    var bbx  = bpt.x + bnx*BDIST*bside;
+    var bbz  = bpt.z + bnz*BDIST*bside;
+    var bbAng= Math.atan2(bnx*bside, bnz*bside);
+
+    // If we have a real image texture, draw frame on top via canvas
+    var finalTex;
+    if(tex){
+      var bbc = document.createElement('canvas');
+      bbc.width=W; bbc.height=H;
+      var bctx=bbc.getContext('2d');
+      // Draw product image scaled to fill
+      bctx.drawImage(tex.image, 0, H*0.10, W, H*0.78);
+      drawFrame(bctx, W, H, labels[b % labels.length]);
+      finalTex = new THREE.CanvasTexture(bbc);
+    } else {
+      var bbc2 = document.createElement('canvas');
+      bbc2.width=W; bbc2.height=H;
+      drawFallback(bbc2.getContext('2d'), W, H, b % PRODUCT_IMGS.length);
+      finalTex = new THREE.CanvasTexture(bbc2);
+    }
+
+    // Bigger board: 12 wide × 6 tall
     var bbMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(8, 4),
-      new THREE.MeshBasicMaterial({map:bbtex, side:THREE.DoubleSide})
+      new THREE.PlaneGeometry(12, 6),
+      new THREE.MeshBasicMaterial({map:finalTex, side:THREE.DoubleSide})
     );
-    var bbAng = Math.atan2(bnx*bside, bnz*bside);
-    bbMesh.position.set(bbx, 4, bbz);
+    bbMesh.position.set(bbx, 5, bbz);
     bbMesh.rotation.y = bbAng;
     scene.add(bbMesh);
-    var pMat = new THREE.MeshLambertMaterial({color:0x555555});
-    var p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 5, 8), pMat);
-    p1.position.set(bbx - Math.cos(bbAng)*3.5, 2.5, bbz - Math.sin(bbAng)*3.5);
-    scene.add(p1);
-    var p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 5, 8), pMat);
-    p2.position.set(bbx + Math.cos(bbAng)*3.5, 2.5, bbz + Math.sin(bbAng)*3.5);
-    scene.add(p2);
+
+    // Support poles
+    var pMat = new THREE.MeshLambertMaterial({color:0x444444});
+    [-4.5, 4.5].forEach(function(ox){
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.18,7,8), pMat);
+      pole.position.set(
+        bbx - Math.cos(bbAng)*ox,
+        3.5,
+        bbz - Math.sin(bbAng)*ox
+      );
+      scene.add(pole);
+    });
   }
+
+  // Load both images, distribute across 12 billboards
+  var loaded = [null, null];
+  function trySpawn(){
+    for(var b=0; b<12; b++){
+      var imgIdx = b % PRODUCT_IMGS.length;
+      spawnBillboard(b, loaded[imgIdx]);
+    }
+  }
+
+  var remaining = PRODUCT_IMGS.length;
+  PRODUCT_IMGS.forEach(function(src, idx){
+    loader.load(src, function(tex){
+      loaded[idx] = tex;
+      remaining--;
+      if(remaining === 0) trySpawn();
+    }, undefined, function(){
+      // Image failed — spawn with fallback
+      remaining--;
+      if(remaining === 0) trySpawn();
+    });
+  });
 })();
 
 // ─── START ARCH ──────────────────────────────────────────────────────────────
