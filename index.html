@@ -1356,8 +1356,8 @@ function showNotif(txt, col){
 // ─── AUDIO ENGINE ────────────────────────────────────────────────────────────
 var audioCtx = null;
 // Engine
-var engOsc=null,engOsc2=null,engOsc3=null,engGain=null,engFilt=null,engFilt2=null;
-var engLfo=null,engLfoGain=null,engAM=null,engAMGain=null;
+var engOsc=null,engOsc2=null,engGain=null,engFilt=null,engFilt2=null,engNoiseFilt=null;
+var engLfo=null,engLfoGain=null;
 var engSub=null,engSubGain=null,noiseSource=null,scrGain=null;
 var engRunning=false,lastGear=0;
 // Music
@@ -1409,55 +1409,72 @@ function beep(freq,dur,vol,type){
 }
 
 // ── ENGINE ────────────────────────────────────────────────────────────────────
+// Waveshaper soft-clip curve — adds natural harmonic saturation like exhaust
+function makeEngDistCurve(amt){
+  var n=512, c=new Float32Array(n);
+  for(var i=0;i<n;i++){
+    var x=i*2/n-1;
+    c[i]=(Math.PI+amt)*x/(Math.PI+amt*Math.abs(x));
+  }
+  return c;
+}
+
 function startEngineSound(){
   if(!audioCtx||engRunning) return;
   engRunning=true;
   try{
     var out=getMasterOut();
-    // 3 harmonically-rich oscillators: fundamental + 2nd + 3rd harmonic
-    engOsc=audioCtx.createOscillator();   engOsc.type='sawtooth';  engOsc.frequency.value=68;
-    engOsc2=audioCtx.createOscillator();  engOsc2.type='sawtooth'; engOsc2.frequency.value=136;
-    engOsc3=audioCtx.createOscillator();  engOsc3.type='square';   engOsc3.frequency.value=204;
-    var g2=audioCtx.createGain(); g2.gain.value=0.5;
-    var g3=audioCtx.createGain(); g3.gain.value=0.22;
-    // AM modulator — creates "wroom wroom" cylinder pulse character
-    engAM=audioCtx.createOscillator(); engAM.type='sine'; engAM.frequency.value=6;
-    engAMGain=audioCtx.createGain(); engAMGain.gain.value=0.55;
-    var amBias=audioCtx.createGain(); amBias.gain.value=0.45; // centre AM around 0.45
-    engAM.connect(engAMGain);
-    // Two-stage filter: bandpass for exhaust midrange + lowpass for warmth
+    if(!sharedNoiseBuf) sharedNoiseBuf=makeNoiseBuf();
+
+    // ── Primary tone: sawtooth → waveshaper distortion (creates rich harmonics)
+    engOsc=audioCtx.createOscillator();
+    engOsc.type='sawtooth'; engOsc.frequency.value=80;
+    var dist=audioCtx.createWaveShaper();
+    dist.curve=makeEngDistCurve(200); dist.oversample='2x';
+
+    // ── 2nd oscillator: detuned octave for thickness
+    engOsc2=audioCtx.createOscillator();
+    engOsc2.type='sawtooth'; engOsc2.frequency.value=162; // 80*2 + slight detune
+    var dist2=audioCtx.createWaveShaper();
+    dist2.curve=makeEngDistCurve(80); dist2.oversample='2x';
+    var g2=audioCtx.createGain(); g2.gain.value=0.45;
+
+    // ── Bandpass: tunes exhaust resonant peak (sweeps with RPM)
     engFilt=audioCtx.createBiquadFilter();
-    engFilt.type='bandpass'; engFilt.frequency.value=420; engFilt.Q.value=1.8;
+    engFilt.type='bandpass'; engFilt.frequency.value=260; engFilt.Q.value=4.5;
+
+    // ── Lowpass: body warmth
     engFilt2=audioCtx.createBiquadFilter();
-    engFilt2.type='lowpass'; engFilt2.frequency.value=900; engFilt2.Q.value=0.7;
+    engFilt2.type='lowpass'; engFilt2.frequency.value=780; engFilt2.Q.value=0.8;
+
     engGain=audioCtx.createGain(); engGain.gain.value=0;
-    // Chain: oscs → filter1 → filter2 → AM multiply → master gain → out
-    engOsc.connect(engFilt);
-    engOsc2.connect(g2); g2.connect(engFilt);
-    engOsc3.connect(g3); g3.connect(engFilt);
-    engFilt.connect(engFilt2);
-    engFilt2.connect(engGain);
-    engAMGain.connect(engGain.gain); // AM modulates output gain
+
+    engOsc.connect(dist); dist.connect(engFilt);
+    engOsc2.connect(dist2); dist2.connect(g2); g2.connect(engFilt);
+    engFilt.connect(engFilt2); engFilt2.connect(engGain);
     engGain.connect(out);
-    engOsc.start(); engOsc2.start(); engOsc3.start(); engAM.start();
-    engGain.gain.setTargetAtTime(0.22, audioCtx.currentTime, 0.4);
-    // Sub-bass boom
-    engSub=audioCtx.createOscillator(); engSub.type='sine'; engSub.frequency.value=34;
+    engOsc.start(); engOsc2.start();
+    engGain.gain.setTargetAtTime(0.28, audioCtx.currentTime, 0.5);
+
+    // ── Sub-bass: physical rumble (sine at half fundamental)
+    engSub=audioCtx.createOscillator(); engSub.type='sine'; engSub.frequency.value=40;
     engSubGain=audioCtx.createGain(); engSubGain.gain.value=0;
-    engSub.connect(engSubGain); engSubGain.connect(out);
-    engSub.start();
-    engSubGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 0.5);
-    // LFO for RPM cylinder pulse
-    engLfo=audioCtx.createOscillator(); engLfo.type='sine'; engLfo.frequency.value=5;
-    engLfoGain=audioCtx.createGain(); engLfoGain.gain.value=7;
+    engSub.connect(engSubGain); engSubGain.connect(out); engSub.start();
+    engSubGain.gain.setTargetAtTime(0.22, audioCtx.currentTime, 0.5);
+
+    // ── LFO: cylinder firing pulses ("chug" — rate rises with RPM)
+    engLfo=audioCtx.createOscillator(); engLfo.type='sine'; engLfo.frequency.value=6;
+    engLfoGain=audioCtx.createGain(); engLfoGain.gain.value=9;
     engLfo.connect(engLfoGain); engLfoGain.connect(engOsc.frequency);
     engLfo.start();
-    // Tire screech
-    if(!sharedNoiseBuf) sharedNoiseBuf=makeNoiseBuf();
-    noiseSource=audioCtx.createBufferSource(); noiseSource.buffer=sharedNoiseBuf; noiseSource.loop=true;
-    var sF=audioCtx.createBiquadFilter(); sF.type='bandpass'; sF.frequency.value=1100; sF.Q.value=1.1;
-    scrGain=audioCtx.createGain(); scrGain.gain.value=0;
-    noiseSource.connect(sF); sF.connect(scrGain); scrGain.connect(out);
+
+    // ── Noise breath: intake/exhaust rush + tire screech shared node
+    noiseSource=audioCtx.createBufferSource();
+    noiseSource.buffer=sharedNoiseBuf; noiseSource.loop=true;
+    engNoiseFilt=audioCtx.createBiquadFilter();
+    engNoiseFilt.type='bandpass'; engNoiseFilt.frequency.value=380; engNoiseFilt.Q.value=1.8;
+    scrGain=audioCtx.createGain(); scrGain.gain.value=0.05;
+    noiseSource.connect(engNoiseFilt); engNoiseFilt.connect(scrGain); scrGain.connect(out);
     noiseSource.start();
   }catch(e){}
 }
@@ -1467,48 +1484,68 @@ function stopEngineSound(){
   try{
     if(engOsc){engOsc.stop();engOsc=null;}
     if(engOsc2){engOsc2.stop();engOsc2=null;}
-    if(engOsc3){engOsc3.stop();engOsc3=null;}
-    if(engAM){engAM.stop();engAM=null;}
     if(engLfo){engLfo.stop();engLfo=null;}
     if(engSub){engSub.stop();engSub=null;}
     if(noiseSource){noiseSource.stop();noiseSource=null;}
   }catch(e){}
-  engGain=engFilt=engFilt2=engAMGain=engLfoGain=engSubGain=scrGain=null;
+  engGain=engFilt=engFilt2=engNoiseFilt=engLfoGain=engSubGain=scrGain=null;
 }
 
-function updateEngineSound(speed,steerAmt){
+function updateEngineSound(speed, steerAmt, gasOn){
   if(!audioCtx||!engOsc||!engGain) return;
   var t=audioCtx.currentTime, absSp=Math.abs(speed);
-  var baseFreq=68+absSp*7.2;
-  // Gear shift: brief pitch dip then recovery
+  // 80 Hz idle → 380 Hz full throttle (wider = more dramatic rev range)
+  var baseFreq=80+absSp*12.5;
+  var tau=gasOn?0.03:0.14; // fast attack on gas, slow decay on lift
+
+  // Gear shift: pitch dip + crackle pop
   var gear=absSp<MAX_SPD*0.33?1:absSp<MAX_SPD*0.66?2:3;
   if(gear!==lastGear&&lastGear>0){
     engOsc.frequency.cancelScheduledValues(t);
-    engOsc.frequency.setValueAtTime(baseFreq*0.68,t);
-    engOsc.frequency.exponentialRampToValueAtTime(baseFreq,t+0.16);
-    // Crackle on upshift
-    beep(200+Math.random()*80,0.04,0.08,'sawtooth');
-  }else{ engOsc.frequency.setTargetAtTime(baseFreq,t,0.07); }
+    engOsc.frequency.setValueAtTime(baseFreq*0.62,t);
+    engOsc.frequency.exponentialRampToValueAtTime(baseFreq,t+0.18);
+    beep(150+Math.random()*60,0.05,0.12,'sawtooth');
+  } else {
+    engOsc.frequency.setTargetAtTime(baseFreq, t, tau);
+  }
   lastGear=gear;
-  if(engOsc2) engOsc2.frequency.setTargetAtTime(baseFreq*2,t,0.07);
-  if(engOsc3) engOsc3.frequency.setTargetAtTime(baseFreq*3,t,0.07);
-  // Bandpass sweeps up with RPM (exhaust pipe resonance)
-  if(engFilt)  engFilt.frequency.setTargetAtTime(320+absSp*28,t,0.09);
-  if(engFilt2) engFilt2.frequency.setTargetAtTime(700+absSp*22,t,0.1);
-  // AM rate tracks RPM
-  if(engAM) engAM.frequency.setTargetAtTime(5+absSp*0.6,t,0.1);
-  // Volume
-  engGain.gain.setTargetAtTime(0.14+absSp/MAX_SPD*0.22,t,0.06);
-  // LFO
-  if(engLfo) engLfo.frequency.setTargetAtTime(4+absSp*0.55,t,0.12);
-  if(engLfoGain) engLfoGain.gain.setTargetAtTime(5+absSp*0.18,t,0.14);
-  // Sub
-  if(engSub) engSub.frequency.setTargetAtTime(baseFreq*0.5,t,0.1);
-  if(engSubGain) engSubGain.gain.setTargetAtTime(0.14+absSp/MAX_SPD*0.08,t,0.08);
-  // Screech
-  if(scrGain){
-    var scr=(Math.abs(steerAmt)>0.4&&absSp>MAX_SPD*0.32)?0.3:0;
-    scrGain.gain.setTargetAtTime(scr,t,scr>0?0.04:0.16);
+  if(engOsc2) engOsc2.frequency.setTargetAtTime(baseFreq*2+1.5, t, tau);
+
+  // Bandpass sweeps open on acceleration — this IS the "whoosh" of revving
+  if(engFilt){
+    var bpFreq=gasOn?(220+absSp*22):(180+absSp*15);
+    var bpQ=gasOn?6:3.5;
+    engFilt.frequency.setTargetAtTime(bpFreq, t, gasOn?0.04:0.18);
+    engFilt.Q.setTargetAtTime(bpQ, t, 0.08);
+  }
+  if(engFilt2) engFilt2.frequency.setTargetAtTime(650+absSp*18, t, 0.1);
+
+  // Volume spikes on gas press — you feel the punch
+  var vol=gasOn?(0.22+absSp/MAX_SPD*0.30):(0.10+absSp/MAX_SPD*0.18);
+  engGain.gain.setTargetAtTime(vol, t, gasOn?0.03:0.16);
+
+  // LFO cylinder rate
+  if(engLfo) engLfo.frequency.setTargetAtTime(5.5+absSp*0.75, t, 0.1);
+  if(engLfoGain) engLfoGain.gain.setTargetAtTime(7+absSp*0.12, t, 0.12);
+
+  // Sub rumble
+  if(engSub) engSub.frequency.setTargetAtTime(baseFreq*0.5, t, 0.09);
+  if(engSubGain) engSubGain.gain.setTargetAtTime(0.18+absSp/MAX_SPD*0.1, t, 0.08);
+
+  // Noise: intake rush when accelerating + tire screech on corners
+  if(scrGain&&engNoiseFilt){
+    var isTireScreech=(Math.abs(steerAmt)>0.38&&absSp>MAX_SPD*0.3);
+    if(isTireScreech){
+      engNoiseFilt.frequency.setTargetAtTime(1200, t, 0.04);
+      engNoiseFilt.Q.setTargetAtTime(2.5, t, 0.05);
+      scrGain.gain.setTargetAtTime(0.38, t, 0.04);
+    } else {
+      // Intake rush — swells with throttle
+      var noiseFreq=gasOn?(300+absSp*14):(280+absSp*10);
+      engNoiseFilt.frequency.setTargetAtTime(noiseFreq, t, 0.12);
+      engNoiseFilt.Q.setTargetAtTime(1.6, t, 0.12);
+      scrGain.gain.setTargetAtTime(gasOn?(0.06+absSp/MAX_SPD*0.10):0.03, t, 0.12);
+    }
   }
 }
 
@@ -1944,7 +1981,7 @@ function animate(ts){
     var sinYaw = Math.sin(carYaw), cosYaw = Math.cos(carYaw);
     carX -= sinYaw * carSpeed * dt;
     carZ -= cosYaw * carSpeed * dt;
-    updateEngineSound(carSpeed, steerAmt);
+    updateEngineSound(carSpeed, steerAmt, gasOn);
 
     // Track bounds
     var minDist = Infinity, nearI = 0;
