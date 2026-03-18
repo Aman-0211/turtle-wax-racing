@@ -1355,202 +1355,326 @@ function showNotif(txt, col){
 
 // ─── AUDIO ENGINE ────────────────────────────────────────────────────────────
 var audioCtx = null;
-var engOsc = null, engOsc2 = null, engGain = null, engFilt = null;
-var engLfo = null, engLfoGain = null;
-var engSub = null, engSubGain = null;
-var noiseSource = null, scrGain = null;
-var engRunning = false, lastGear = 0;
+// Engine
+var engOsc=null,engOsc2=null,engOsc3=null,engGain=null,engFilt=null,engFilt2=null;
+var engLfo=null,engLfoGain=null,engAM=null,engAMGain=null;
+var engSub=null,engSubGain=null,noiseSource=null,scrGain=null;
+var engRunning=false,lastGear=0;
+// Music
+var musicPlaying=false,musicStep=0,musicNextTime=0;
+var musicMaster=null,sharedNoiseBuf=null;
+var BPM=136, MSTEPS=16;
+var STEP_T = (60/BPM)/2; // 8th-note duration
+// Am progression — A2=110 E2=82 G2=98 F2=87 D2=73
+var BASS_PAT=[110,110,0,110,82,0,82,98,98,0,98,87,87,0,73,73];
+// Am pentatonic lead A4=440 C5=523 E5=659 G5=784 A5=880
+var LEAD_PAT=[0,0,440,0,523,0,659,0,784,0,880,0,784,0,659,0];
+var KICK_PAT =[1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0];
+var SNARE_PAT=[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1];
+var HIHAT_PAT=[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+var OHAT_PAT =[0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0];
 
-function beep(freq, dur, vol, type){
-  if(!audioCtx) return;
-  try{
-    var o = audioCtx.createOscillator();
-    var gn = audioCtx.createGain();
-    o.connect(gn); gn.connect(audioCtx.destination);
-    o.type = type || 'sine'; o.frequency.value = freq;
-    gn.gain.setValueAtTime(vol || 0.18, audioCtx.currentTime);
-    gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    o.start(); o.stop(audioCtx.currentTime + dur);
-  }catch(e){}
-}
-
+// ── Shared noise buffer ───────────────────────────────────────────────────────
 function makeNoiseBuf(){
-  var rate = audioCtx.sampleRate, len = rate * 3;
-  var buf = audioCtx.createBuffer(1, len, rate);
-  var d = buf.getChannelData(0);
-  for(var i=0;i<len;i++) d[i] = Math.random()*2 - 1;
+  var rate=audioCtx.sampleRate, len=rate*3;
+  var buf=audioCtx.createBuffer(1,len,rate);
+  var d=buf.getChannelData(0);
+  for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
   return buf;
 }
 
-function startEngineSound(){
-  if(!audioCtx || engRunning) return;
-  engRunning = true;
+// ── Master compressor (glues everything together with punch) ─────────────────
+function getMasterOut(){
+  if(!audioCtx._comp){
+    var comp=audioCtx.createDynamicsCompressor();
+    comp.threshold.value=-14; comp.knee.value=8;
+    comp.ratio.value=6; comp.attack.value=0.003; comp.release.value=0.18;
+    comp.connect(audioCtx.destination);
+    audioCtx._comp=comp;
+  }
+  return audioCtx._comp;
+}
+
+// ── Simple beep (timer warnings) ─────────────────────────────────────────────
+function beep(freq,dur,vol,type){
+  if(!audioCtx) return;
   try{
-    // Primary engine oscillator — sawtooth for harsh exhaust character
-    engOsc = audioCtx.createOscillator();
-    engOsc.type = 'sawtooth';
-    engOsc.frequency.value = 72;
-    // Second oscillator — slight detune for thick sound
-    engOsc2 = audioCtx.createOscillator();
-    engOsc2.type = 'square';
-    engOsc2.frequency.value = 146;
-    var osc2g = audioCtx.createGain();
-    osc2g.gain.value = 0.28;
-    // Lowpass filter — simulates exhaust pipe resonance
-    engFilt = audioCtx.createBiquadFilter();
-    engFilt.type = 'lowpass';
-    engFilt.frequency.value = 450;
-    engFilt.Q.value = 2.2;
-    engGain = audioCtx.createGain();
-    engGain.gain.value = 0;
+    var o=audioCtx.createOscillator(), gn=audioCtx.createGain();
+    o.connect(gn); gn.connect(getMasterOut());
+    o.type=type||'sine'; o.frequency.value=freq;
+    gn.gain.setValueAtTime(vol||0.14, audioCtx.currentTime);
+    gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+
+// ── ENGINE ────────────────────────────────────────────────────────────────────
+function startEngineSound(){
+  if(!audioCtx||engRunning) return;
+  engRunning=true;
+  try{
+    var out=getMasterOut();
+    // 3 harmonically-rich oscillators: fundamental + 2nd + 3rd harmonic
+    engOsc=audioCtx.createOscillator();   engOsc.type='sawtooth';  engOsc.frequency.value=68;
+    engOsc2=audioCtx.createOscillator();  engOsc2.type='sawtooth'; engOsc2.frequency.value=136;
+    engOsc3=audioCtx.createOscillator();  engOsc3.type='square';   engOsc3.frequency.value=204;
+    var g2=audioCtx.createGain(); g2.gain.value=0.5;
+    var g3=audioCtx.createGain(); g3.gain.value=0.22;
+    // AM modulator — creates "wroom wroom" cylinder pulse character
+    engAM=audioCtx.createOscillator(); engAM.type='sine'; engAM.frequency.value=6;
+    engAMGain=audioCtx.createGain(); engAMGain.gain.value=0.55;
+    var amBias=audioCtx.createGain(); amBias.gain.value=0.45; // centre AM around 0.45
+    engAM.connect(engAMGain);
+    // Two-stage filter: bandpass for exhaust midrange + lowpass for warmth
+    engFilt=audioCtx.createBiquadFilter();
+    engFilt.type='bandpass'; engFilt.frequency.value=420; engFilt.Q.value=1.8;
+    engFilt2=audioCtx.createBiquadFilter();
+    engFilt2.type='lowpass'; engFilt2.frequency.value=900; engFilt2.Q.value=0.7;
+    engGain=audioCtx.createGain(); engGain.gain.value=0;
+    // Chain: oscs → filter1 → filter2 → AM multiply → master gain → out
     engOsc.connect(engFilt);
-    engOsc2.connect(osc2g); osc2g.connect(engFilt);
-    engFilt.connect(engGain);
-    engGain.connect(audioCtx.destination);
-    engOsc.start(); engOsc2.start();
-    // Ramp engine up from silence (cold start feel)
-    engGain.gain.setTargetAtTime(0.14, audioCtx.currentTime, 0.35);
-    // LFO — modulates pitch to simulate cylinder firing pulses ("chug" feel)
-    engLfo = audioCtx.createOscillator();
-    engLfo.type = 'sine';
-    engLfo.frequency.value = 5;
-    engLfoGain = audioCtx.createGain();
-    engLfoGain.gain.value = 6;
-    engLfo.connect(engLfoGain);
-    engLfoGain.connect(engOsc.frequency); // modulate main osc pitch
-    engLfo.start();
-    // Sub-bass — deep body rumble beneath exhaust note
-    engSub = audioCtx.createOscillator();
-    engSub.type = 'sine';
-    engSub.frequency.value = 36;
-    engSubGain = audioCtx.createGain();
-    engSubGain.gain.value = 0;
-    engSub.connect(engSubGain);
-    engSubGain.connect(audioCtx.destination);
+    engOsc2.connect(g2); g2.connect(engFilt);
+    engOsc3.connect(g3); g3.connect(engFilt);
+    engFilt.connect(engFilt2);
+    engFilt2.connect(engGain);
+    engAMGain.connect(engGain.gain); // AM modulates output gain
+    engGain.connect(out);
+    engOsc.start(); engOsc2.start(); engOsc3.start(); engAM.start();
+    engGain.gain.setTargetAtTime(0.22, audioCtx.currentTime, 0.4);
+    // Sub-bass boom
+    engSub=audioCtx.createOscillator(); engSub.type='sine'; engSub.frequency.value=34;
+    engSubGain=audioCtx.createGain(); engSubGain.gain.value=0;
+    engSub.connect(engSubGain); engSubGain.connect(out);
     engSub.start();
-    engSubGain.gain.setTargetAtTime(0.13, audioCtx.currentTime, 0.4);
-    // Tire screech layer — bandpass white noise
-    noiseSource = audioCtx.createBufferSource();
-    noiseSource.buffer = makeNoiseBuf();
-    noiseSource.loop = true;
-    var scrFilt = audioCtx.createBiquadFilter();
-    scrFilt.type = 'bandpass';
-    scrFilt.frequency.value = 950;
-    scrFilt.Q.value = 0.9;
-    scrGain = audioCtx.createGain();
-    scrGain.gain.value = 0;
-    noiseSource.connect(scrFilt); scrFilt.connect(scrGain);
-    scrGain.connect(audioCtx.destination);
+    engSubGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 0.5);
+    // LFO for RPM cylinder pulse
+    engLfo=audioCtx.createOscillator(); engLfo.type='sine'; engLfo.frequency.value=5;
+    engLfoGain=audioCtx.createGain(); engLfoGain.gain.value=7;
+    engLfo.connect(engLfoGain); engLfoGain.connect(engOsc.frequency);
+    engLfo.start();
+    // Tire screech
+    if(!sharedNoiseBuf) sharedNoiseBuf=makeNoiseBuf();
+    noiseSource=audioCtx.createBufferSource(); noiseSource.buffer=sharedNoiseBuf; noiseSource.loop=true;
+    var sF=audioCtx.createBiquadFilter(); sF.type='bandpass'; sF.frequency.value=1100; sF.Q.value=1.1;
+    scrGain=audioCtx.createGain(); scrGain.gain.value=0;
+    noiseSource.connect(sF); sF.connect(scrGain); scrGain.connect(out);
     noiseSource.start();
   }catch(e){}
 }
 
 function stopEngineSound(){
-  engRunning = false; lastGear = 0;
+  engRunning=false; lastGear=0;
   try{
-    if(engOsc){ engOsc.stop(); engOsc = null; }
-    if(engOsc2){ engOsc2.stop(); engOsc2 = null; }
-    if(engLfo){ engLfo.stop(); engLfo = null; }
-    if(engSub){ engSub.stop(); engSub = null; }
-    if(noiseSource){ noiseSource.stop(); noiseSource = null; }
+    if(engOsc){engOsc.stop();engOsc=null;}
+    if(engOsc2){engOsc2.stop();engOsc2=null;}
+    if(engOsc3){engOsc3.stop();engOsc3=null;}
+    if(engAM){engAM.stop();engAM=null;}
+    if(engLfo){engLfo.stop();engLfo=null;}
+    if(engSub){engSub.stop();engSub=null;}
+    if(noiseSource){noiseSource.stop();noiseSource=null;}
   }catch(e){}
-  engGain = null; scrGain = null; engFilt = null; engLfoGain = null; engSubGain = null;
+  engGain=engFilt=engFilt2=engAMGain=engLfoGain=engSubGain=scrGain=null;
 }
 
-function updateEngineSound(speed, steerAmt){
-  if(!audioCtx || !engOsc || !engGain) return;
-  var t = audioCtx.currentTime;
-  var absSp = Math.abs(speed);
-  // Pitch: 72 Hz idle → ~235 Hz at full throttle
-  var baseFreq = 72 + absSp * 6.8;
-  // Gear shift transient — brief freq dip + rise when crossing gear thresholds
-  var gear = absSp < MAX_SPD*0.33 ? 1 : absSp < MAX_SPD*0.66 ? 2 : 3;
-  if(gear !== lastGear && lastGear > 0 && engOsc){
+function updateEngineSound(speed,steerAmt){
+  if(!audioCtx||!engOsc||!engGain) return;
+  var t=audioCtx.currentTime, absSp=Math.abs(speed);
+  var baseFreq=68+absSp*7.2;
+  // Gear shift: brief pitch dip then recovery
+  var gear=absSp<MAX_SPD*0.33?1:absSp<MAX_SPD*0.66?2:3;
+  if(gear!==lastGear&&lastGear>0){
     engOsc.frequency.cancelScheduledValues(t);
-    engOsc.frequency.setValueAtTime(baseFreq * 0.70, t);
-    engOsc.frequency.exponentialRampToValueAtTime(baseFreq, t + 0.14);
-  } else {
-    engOsc.frequency.setTargetAtTime(baseFreq, t, 0.07);
-  }
-  lastGear = gear;
-  if(engOsc2) engOsc2.frequency.setTargetAtTime(baseFreq * 2.03, t, 0.07);
-  // Filter cutoff rises with revs (exhaust pipe opens up)
-  if(engFilt) engFilt.frequency.setTargetAtTime(380 + absSp * 30, t, 0.09);
-  // Volume: idle rumble + speed
-  var vol = 0.09 + (absSp / MAX_SPD) * 0.18;
-  engGain.gain.setTargetAtTime(vol, t, 0.06);
-  // LFO rate rises with RPM (more cylinder pulses per second at higher revs)
-  if(engLfo) engLfo.frequency.setTargetAtTime(4 + absSp * 0.52, t, 0.12);
-  if(engLfoGain) engLfoGain.gain.setTargetAtTime(4 + absSp * 0.2, t, 0.14);
-  // Sub-bass tracks half the engine frequency for physical rumble
-  if(engSub) engSub.frequency.setTargetAtTime(baseFreq * 0.48, t, 0.1);
-  if(engSubGain) engSubGain.gain.setTargetAtTime(0.10 + absSp/MAX_SPD * 0.07, t, 0.08);
-  // Tire screech when cornering hard at speed
+    engOsc.frequency.setValueAtTime(baseFreq*0.68,t);
+    engOsc.frequency.exponentialRampToValueAtTime(baseFreq,t+0.16);
+    // Crackle on upshift
+    beep(200+Math.random()*80,0.04,0.08,'sawtooth');
+  }else{ engOsc.frequency.setTargetAtTime(baseFreq,t,0.07); }
+  lastGear=gear;
+  if(engOsc2) engOsc2.frequency.setTargetAtTime(baseFreq*2,t,0.07);
+  if(engOsc3) engOsc3.frequency.setTargetAtTime(baseFreq*3,t,0.07);
+  // Bandpass sweeps up with RPM (exhaust pipe resonance)
+  if(engFilt)  engFilt.frequency.setTargetAtTime(320+absSp*28,t,0.09);
+  if(engFilt2) engFilt2.frequency.setTargetAtTime(700+absSp*22,t,0.1);
+  // AM rate tracks RPM
+  if(engAM) engAM.frequency.setTargetAtTime(5+absSp*0.6,t,0.1);
+  // Volume
+  engGain.gain.setTargetAtTime(0.14+absSp/MAX_SPD*0.22,t,0.06);
+  // LFO
+  if(engLfo) engLfo.frequency.setTargetAtTime(4+absSp*0.55,t,0.12);
+  if(engLfoGain) engLfoGain.gain.setTargetAtTime(5+absSp*0.18,t,0.14);
+  // Sub
+  if(engSub) engSub.frequency.setTargetAtTime(baseFreq*0.5,t,0.1);
+  if(engSubGain) engSubGain.gain.setTargetAtTime(0.14+absSp/MAX_SPD*0.08,t,0.08);
+  // Screech
   if(scrGain){
-    var screech = (Math.abs(steerAmt) > 0.42 && absSp > MAX_SPD * 0.35) ? 0.26 : 0;
-    scrGain.gain.setTargetAtTime(screech, t, screech > 0 ? 0.05 : 0.18);
+    var scr=(Math.abs(steerAmt)>0.4&&absSp>MAX_SPD*0.32)?0.3:0;
+    scrGain.gain.setTargetAtTime(scr,t,scr>0?0.04:0.16);
   }
 }
 
+// ── MUSIC ─────────────────────────────────────────────────────────────────────
+function playKick(time){
+  try{
+    var out=getMasterOut();
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(160,time);
+    o.frequency.exponentialRampToValueAtTime(38,time+0.09);
+    g.gain.setValueAtTime(2.2,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.38);
+    o.connect(g); g.connect(out); o.start(time); o.stop(time+0.38);
+    // Click transient
+    var c=audioCtx.createOscillator(), cg=audioCtx.createGain();
+    c.type='square'; c.frequency.value=900;
+    cg.gain.setValueAtTime(0.5,time); cg.gain.exponentialRampToValueAtTime(0.001,time+0.018);
+    c.connect(cg); cg.connect(out); c.start(time); c.stop(time+0.018);
+  }catch(e){}
+}
+function playSnare(time){
+  try{
+    var out=getMasterOut();
+    // Body tone
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='triangle'; o.frequency.value=220;
+    g.gain.setValueAtTime(0.9,time); g.gain.exponentialRampToValueAtTime(0.001,time+0.14);
+    o.connect(g); g.connect(out); o.start(time); o.stop(time+0.14);
+    // Noise buzz
+    var ns=audioCtx.createBufferSource(); ns.buffer=sharedNoiseBuf;
+    var nf=audioCtx.createBiquadFilter(); nf.type='bandpass'; nf.frequency.value=3500; nf.Q.value=0.7;
+    var ng=audioCtx.createGain();
+    ng.gain.setValueAtTime(1.1,time); ng.gain.exponentialRampToValueAtTime(0.001,time+0.19);
+    ns.connect(nf); nf.connect(ng); ng.connect(out); ns.start(time); ns.stop(time+0.19);
+  }catch(e){}
+}
+function playHihat(time,open){
+  try{
+    var ns=audioCtx.createBufferSource(); ns.buffer=sharedNoiseBuf;
+    var nf=audioCtx.createBiquadFilter(); nf.type='highpass'; nf.frequency.value=9000;
+    var ng=audioCtx.createGain();
+    var dur=open?0.22:0.055;
+    ng.gain.setValueAtTime(0.28,time); ng.gain.exponentialRampToValueAtTime(0.001,time+dur);
+    ns.connect(nf); nf.connect(ng); ng.connect(getMasterOut()); ns.start(time); ns.stop(time+dur);
+  }catch(e){}
+}
+function playBass(freq,time){
+  if(!freq) return;
+  try{
+    var o=audioCtx.createOscillator(), f=audioCtx.createBiquadFilter(), g=audioCtx.createGain();
+    o.type='sawtooth'; o.frequency.value=freq;
+    f.type='lowpass'; f.frequency.value=700; f.Q.value=4;
+    g.gain.setValueAtTime(0.75,time); g.gain.exponentialRampToValueAtTime(0.001,time+STEP_T*1.85);
+    o.connect(f); f.connect(g); g.connect(getMasterOut()); o.start(time); o.stop(time+STEP_T*2);
+  }catch(e){}
+}
+function playLead(freq,time){
+  if(!freq) return;
+  try{
+    var o=audioCtx.createOscillator(), f=audioCtx.createBiquadFilter(), g=audioCtx.createGain();
+    o.type='square'; o.frequency.value=freq;
+    f.type='lowpass'; f.frequency.value=2200;
+    g.gain.setValueAtTime(0.10,time); g.gain.exponentialRampToValueAtTime(0.001,time+STEP_T*0.85);
+    o.connect(f); f.connect(g); g.connect(getMasterOut()); o.start(time); o.stop(time+STEP_T);
+  }catch(e){}
+}
+function scheduleMusicSteps(){
+  if(!audioCtx||!musicPlaying) return;
+  while(musicNextTime < audioCtx.currentTime+0.18){
+    var s=musicStep%MSTEPS;
+    if(KICK_PAT[s])  playKick(musicNextTime);
+    if(SNARE_PAT[s]) playSnare(musicNextTime);
+    if(HIHAT_PAT[s]) playHihat(musicNextTime, !!OHAT_PAT[s]);
+    playBass(BASS_PAT[s], musicNextTime);
+    playLead(LEAD_PAT[s], musicNextTime);
+    musicStep++; musicNextTime+=STEP_T;
+  }
+}
+function startMusic(){
+  if(!audioCtx||musicPlaying) return;
+  musicPlaying=true; musicStep=0;
+  STEP_T=(60/BPM)/2;
+  musicNextTime=audioCtx.currentTime+0.12;
+  if(!sharedNoiseBuf) sharedNoiseBuf=makeNoiseBuf();
+}
+function stopMusic(){
+  musicPlaying=false;
+}
+
+// ── SFX ───────────────────────────────────────────────────────────────────────
 function collectSound(){
   if(!audioCtx) return;
-  // Rising C major arpeggio — satisfying pickup chime
-  var notes = [523, 659, 784, 1047];
+  var notes=[523,659,784,1047,1319];
   for(var i=0;i<notes.length;i++){
-    (function(freq, delay){
+    (function(freq,delay){
       setTimeout(function(){
-        var o = audioCtx.createOscillator();
-        var gn = audioCtx.createGain();
-        o.type = 'triangle'; o.frequency.value = freq;
-        o.connect(gn); gn.connect(audioCtx.destination);
-        gn.gain.setValueAtTime(0.22, audioCtx.currentTime);
-        gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.38);
-        o.start(); o.stop(audioCtx.currentTime + 0.38);
-      }, delay);
-    })(notes[i], i * 65);
+        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type='triangle'; o.frequency.value=freq;
+        g.gain.setValueAtTime(0.25,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.35);
+        o.connect(g); g.connect(getMasterOut()); o.start(); o.stop(audioCtx.currentTime+0.35);
+      },delay);
+    })(notes[i],i*55);
   }
 }
-
 function bumpSound(){
   if(!audioCtx) return;
-  // Low thud — cone hit
-  var o = audioCtx.createOscillator();
-  var gn = audioCtx.createGain();
-  o.type = 'sawtooth'; o.frequency.value = 120;
-  o.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.18);
-  o.connect(gn); gn.connect(audioCtx.destination);
-  gn.gain.setValueAtTime(0.35, audioCtx.currentTime);
-  gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
-  o.start(); o.stop(audioCtx.currentTime + 0.22);
+  try{
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(130,audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(35,audioCtx.currentTime+0.2);
+    g.gain.setValueAtTime(0.55,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.25);
+    o.connect(g); g.connect(getMasterOut()); o.start(); o.stop(audioCtx.currentTime+0.25);
+    // Metallic clang
+    var o2=audioCtx.createOscillator(), g2=audioCtx.createGain();
+    o2.type='square'; o2.frequency.value=480;
+    g2.gain.setValueAtTime(0.2,audioCtx.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);
+    o2.connect(g2); g2.connect(getMasterOut()); o2.start(); o2.stop(audioCtx.currentTime+0.08);
+  }catch(e){}
 }
 function oilSkidSound(){
-  if(!audioCtx) return;
-  // High-pitched long screech
-  var o = audioCtx.createOscillator();
-  var gn = audioCtx.createGain();
-  o.type = 'sawtooth'; o.frequency.value = 1400;
-  o.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.6);
-  o.connect(gn); gn.connect(audioCtx.destination);
-  gn.gain.setValueAtTime(0.18, audioCtx.currentTime);
-  gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
-  o.start(); o.stop(audioCtx.currentTime + 0.6);
+  if(!audioCtx||!sharedNoiseBuf) return;
+  try{
+    var ns=audioCtx.createBufferSource(); ns.buffer=sharedNoiseBuf;
+    var f=audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1600; f.Q.value=2;
+    var g=audioCtx.createGain();
+    g.gain.setValueAtTime(0.4,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.7);
+    ns.connect(f); f.connect(g); g.connect(getMasterOut()); ns.start(); ns.stop(audioCtx.currentTime+0.7);
+  }catch(e){}
 }
 function startFanfare(){
   if(!audioCtx) return;
-  var notes = [523, 659, 784, 1047, 1319];
-  for(var i=0;i<notes.length;i++){
-    (function(freq, delay){
+  // Dramatic rising chord + flourish
+  var chords=[[220,277,330],[261,329,392],[293,369,440],[349,440,523]];
+  for(var ci=0;ci<chords.length;ci++){
+    (function(chord,delay){
       setTimeout(function(){
-        var o = audioCtx.createOscillator();
-        var gn = audioCtx.createGain();
-        o.type = 'triangle'; o.frequency.value = freq;
-        o.connect(gn); gn.connect(audioCtx.destination);
-        gn.gain.setValueAtTime(0.28, audioCtx.currentTime);
-        gn.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.65);
-        o.start(); o.stop(audioCtx.currentTime + 0.65);
-      }, delay);
-    })(notes[i], i * 110);
+        for(var ni=0;ni<chord.length;ni++){
+          (function(freq){
+            var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+            o.type='triangle'; o.frequency.value=freq;
+            g.gain.setValueAtTime(0.18,audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.7);
+            o.connect(g); g.connect(getMasterOut()); o.start(); o.stop(audioCtx.currentTime+0.7);
+          })(chord[ni]);
+        }
+      },delay);
+    })(chords[ci],ci*200);
   }
+  // Final high note flourish
+  setTimeout(function(){
+    var notes=[523,659,784,1047,1319,1047,784];
+    for(var i=0;i<notes.length;i++){
+      (function(freq,delay){
+        setTimeout(function(){
+          var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+          o.type='square'; o.frequency.value=freq;
+          g.gain.setValueAtTime(0.12,audioCtx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.18);
+          o.connect(g); g.connect(getMasterOut()); o.start(); o.stop(audioCtx.currentTime+0.18);
+        },delay);
+      })(notes[i],i*80);
+    }
+  },800);
 }
 
 function triggerBurst(pos){
@@ -1661,6 +1785,7 @@ function startGame(){
   document.getElementById('shine-bar').style.width = '0%';
   document.getElementById('shine-pct').textContent = '0%';
   startEngineSound();
+  startMusic();
 }
 
 function endGame(){
@@ -1678,6 +1803,7 @@ function endGame(){
   renderLB(document.getElementById('res-lb-list'));
   document.getElementById('result').style.display = 'flex';
   stopEngineSound();
+  stopMusic();
   startFanfare();
 }
 
@@ -1767,6 +1893,8 @@ function animate(ts){
   // Shimmer
   // Smooth atmosphere transition every frame
   lerpAtmos(dt);
+  // Schedule music notes lookahead
+  scheduleMusicSteps();
 
   if(G.shine > 0){
     var shimAttr = shimGeo.attributes.position;
