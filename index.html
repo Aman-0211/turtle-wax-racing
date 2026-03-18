@@ -1650,7 +1650,7 @@ function startGame(){
   if(isMobile){
     // Mobile: all touch controls PLUS tilt steering + auto-drive bonus
     document.getElementById('tilt-ui').style.display = 'block';
-    document.getElementById('ctrl-hint').textContent = 'TILT or Joystick to steer  |  GAS to accelerate  |  BRK to slow';
+    document.getElementById('ctrl-hint').textContent = 'WASD / Joystick / TILT to steer  |  GAS  |  BRK';
   } else {
     document.getElementById('tilt-ui').style.display = 'none';
     document.getElementById('ctrl-hint').textContent = 'WASD / Arrow Keys \u00a0|\u00a0 Left=Steer \u00a0|\u00a0 Right=GAS';
@@ -1786,18 +1786,19 @@ function animate(ts){
 
     var steerAmt = 0;
     if(joy.active){
-      // On-screen joystick takes priority on both mobile and desktop
+      // Joystick has top priority
       steerAmt = joy.dx;
+    } else if(turnLeft || turnRight){
+      // Keyboard / Arrow keys always work on any device
+      steerAmt = turnLeft ? -1 : turnRight ? 1 : 0;
     } else if(isMobile){
-      // Tilt steering fallback on mobile (3° dead zone for stable hold)
+      // Tilt steering fallback on mobile when no key/joystick input
       steerAmt = Math.max(-1, Math.min(1, tiltGamma / 22));
       if(Math.abs(tiltGamma) < 3) steerAmt = 0;
     } else if(tiltGamma > 8){
       steerAmt = Math.min((tiltGamma - 8) / 30, 1);
     } else if(tiltGamma < -8){
       steerAmt = Math.max((tiltGamma + 8) / 30, -1);
-    } else {
-      steerAmt = turnLeft ? -1 : turnRight ? 1 : 0;
     }
     // Update tilt indicator needle
     if(isMobile && tiltNeedle) tiltNeedle.style.left = Math.round(50 + steerAmt * 42) + '%';
