@@ -989,7 +989,11 @@ buildBarriers();
   });
 
   // ── MAIN BANNER CANVAS ────────────────────────────────────────────────────
-  var BW=2048, BH=512;
+  // Match canvas aspect ratio to the 3D plane so text never gets stretched/clipped
+  var PLANE_W = beamW - 0.5;  // ~32.7 units wide
+  var PLANE_H = 5.5;           // units tall
+  var BH = 512;
+  var BW = Math.round(BH * (PLANE_W / PLANE_H)); // ~3040 — proportional
   var bcv=document.createElement('canvas'); bcv.width=BW; bcv.height=BH;
   var bctx=bcv.getContext('2d');
 
@@ -998,52 +1002,55 @@ buildBarriers();
   bg.addColorStop(0,'#003818'); bg.addColorStop(0.5,'#001a0a'); bg.addColorStop(1,'#003818');
   bctx.fillStyle=bg; bctx.fillRect(0,0,BW,BH);
 
-  // Checkered flag strips — left & right
-  var csz=BH/6;
+  // Checkered flag strips — left & right (each 10% of canvas width)
+  var cszW=BW*0.10, cszH=BH/6;
   for(var rr=0;rr<6;rr++) for(var cc=0;cc<3;cc++){
     bctx.fillStyle=((rr+cc)%2===0)?'#ffffff':'#111111';
-    bctx.fillRect(cc*csz, rr*csz, csz, csz);
-    bctx.fillRect(BW-(cc+1)*csz, rr*csz, csz, csz);
+    bctx.fillRect(cc*(cszW/3), rr*cszH, cszW/3, cszH);
+    bctx.fillRect(BW-cszW+(cc*(cszW/3)), rr*cszH, cszW/3, cszH);
   }
 
-  // Center green glow panel
-  var panelGrad=bctx.createLinearGradient(BW*0.22,0,BW*0.78,0);
+  // Center dark panel overlay (keeps text readable)
+  var panelGrad=bctx.createLinearGradient(BW*0.09,0,BW*0.91,0);
   panelGrad.addColorStop(0,'rgba(0,60,30,0)');
-  panelGrad.addColorStop(0.15,'rgba(0,40,20,0.95)');
-  panelGrad.addColorStop(0.85,'rgba(0,40,20,0.95)');
+  panelGrad.addColorStop(0.06,'rgba(0,30,15,0.96)');
+  panelGrad.addColorStop(0.94,'rgba(0,30,15,0.96)');
   panelGrad.addColorStop(1,'rgba(0,60,30,0)');
   bctx.fillStyle=panelGrad; bctx.fillRect(0,0,BW,BH);
 
-  // "MOTOR FEST" — giant headline
+  // Safe text zone: 12%–88% of canvas width
+  var TX = BW/2, TmaxW = BW * 0.76;
+
+  // "MOTOR FEST" headline
   bctx.textAlign='center';
-  bctx.shadowColor='#00ff88'; bctx.shadowBlur=40;
-  bctx.font='bold '+Math.floor(BH*0.38)+'px Arial Black';
+  bctx.shadowColor='#00ff88'; bctx.shadowBlur=28;
+  bctx.font='bold '+Math.floor(BH*0.36)+'px Arial Black';
   bctx.fillStyle='#ffcc00';
-  bctx.fillText('MOTOR FEST', BW/2, BH*0.42);
+  bctx.fillText('MOTOR FEST', TX, BH*0.40, TmaxW);
 
-  // Subtitle
-  bctx.shadowBlur=16; bctx.shadowColor='#00b84a';
-  bctx.font='bold '+Math.floor(BH*0.15)+'px Arial Black';
+  // Turtle Wax subtitle
+  bctx.shadowBlur=14; bctx.shadowColor='#00b84a';
+  bctx.font='bold '+Math.floor(BH*0.145)+'px Arial Black';
   bctx.fillStyle='#00ff88';
-  bctx.fillText('🐢  TURTLE WAX  Presents', BW/2, BH*0.63);
+  bctx.fillText('TURTLE WAX  Presents', TX, BH*0.62, TmaxW);
 
-  // Hashtag line
-  bctx.shadowBlur=10;
-  bctx.font='bold '+Math.floor(BH*0.12)+'px Arial';
+  // Hashtag
+  bctx.shadowBlur=8;
+  bctx.font='bold '+Math.floor(BH*0.115)+'px Arial';
   bctx.fillStyle='#ffffff';
-  bctx.fillText('#RoadTripUnited2026', BW/2, BH*0.83);
+  bctx.fillText('#RoadTripUnited2026', TX, BH*0.82, TmaxW);
 
-  // Top & bottom accent bars
+  // Top & bottom accent bars (inside safe zone)
   bctx.shadowBlur=0;
-  bctx.fillStyle='#00b84a'; bctx.fillRect(BW*0.22, 0,   BW*0.56, BH*0.04);
-  bctx.fillStyle='#ffcc00'; bctx.fillRect(BW*0.22, BH*0.96, BW*0.56, BH*0.04);
+  bctx.fillStyle='#00b84a'; bctx.fillRect(BW*0.12, 0,        BW*0.76, BH*0.045);
+  bctx.fillStyle='#ffcc00'; bctx.fillRect(BW*0.12, BH*0.955, BW*0.76, BH*0.045);
 
   var bannerTex  = new THREE.CanvasTexture(bcv);
   var bannerMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(beamW - 0.5, 4.5),
+    new THREE.PlaneGeometry(PLANE_W, PLANE_H),
     new THREE.MeshBasicMaterial({map:bannerTex, side:THREE.DoubleSide})
   );
-  bannerMesh.position.copy(gPos(0, 12.5, 0.65)); bannerMesh.rotation.y = yaw;
+  bannerMesh.position.copy(gPos(0, 12.3, 0.65)); bannerMesh.rotation.y = yaw;
   scene.add(bannerMesh);
 
   // ── HANGING FLAGS along the beam ─────────────────────────────────────────
