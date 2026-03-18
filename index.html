@@ -58,10 +58,17 @@ canvas{display:block;}
 #tilt-bar-wrap{height:24px;background:rgba(0,0,0,.58);border:1px solid #00b84a55;border-radius:12px;position:relative;overflow:hidden;margin:0 auto 5px;}
 #tilt-needle{width:24px;height:24px;background:radial-gradient(circle,#00ff88,#00b84a);border-radius:50%;position:absolute;top:0;left:50%;margin-left:-12px;box-shadow:0 0 14px #00b84a,0 0 4px #fff;}
 #tilt-label{color:rgba(0,184,74,.65);font-size:10px;letter-spacing:2px;}
+#countdown{position:fixed;top:0;left:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;z-index:200;pointer-events:none;}
+#countdown-num{font-size:clamp(100px,22vw,200px);font-weight:900;color:#ffcc00;text-shadow:0 0 60px #ffcc00aa,0 0 20px #fff;letter-spacing:-4px;animation:cdPop .45s ease-out;}
+@keyframes cdPop{0%{transform:scale(2.2);opacity:0;}60%{transform:scale(0.88);}100%{transform:scale(1);opacity:1;}}
+#countdown-go{font-size:clamp(60px,14vw,130px);font-weight:900;color:#00ff88;text-shadow:0 0 60px #00ff88aa,0 0 20px #fff;letter-spacing:4px;animation:cdPop .45s ease-out;}
 </style>
 </head>
 <body>
 <canvas id="gc"></canvas>
+
+<!-- COUNTDOWN -->
+<div id="countdown"><span id="countdown-num">3</span></div>
 
 <!-- ATTRACT -->
 <div id="attract">
@@ -990,7 +997,8 @@ buildBarriers();
 
   // ── MAIN BANNER CANVAS ────────────────────────────────────────────────────
   // Match canvas aspect ratio to the 3D plane so text never gets stretched/clipped
-  var PLANE_W = beamW - 0.5;  // ~32.7 units wide
+  // Use narrower width so banner stays inside the pillars (inner pillar faces at ±14.4)
+  var PLANE_W = beamW - 5.0;  // ~28.2 units — inside both pillar faces
   var PLANE_H = 5.5;           // units tall
   var BH = 512;
   var BW = Math.round(BH * (PLANE_W / PLANE_H)); // ~3040 — proportional
@@ -1050,7 +1058,7 @@ buildBarriers();
     new THREE.PlaneGeometry(PLANE_W, PLANE_H),
     new THREE.MeshBasicMaterial({map:bannerTex, side:THREE.DoubleSide})
   );
-  bannerMesh.position.copy(gPos(0, 12.3, 0.65)); bannerMesh.rotation.y = yaw;
+  bannerMesh.position.copy(gPos(0, 11.5, 0.90)); bannerMesh.rotation.y = yaw;
   scene.add(bannerMesh);
 
   // ── HANGING FLAGS along the beam ─────────────────────────────────────────
@@ -1521,7 +1529,7 @@ var oilT = 0; // active oil skid timer
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 var G = {state:'attract', time:GAME_DUR, score:0, shine:0, n:0, laps:0};
-var carSpeed = 0, carYaw = 0;
+var carSpeed = 0, carYaw = Math.atan2(-splineTans[0].x, -splineTans[0].z);
 var carX = splinePts[0].x, carZ = splinePts[0].z;
 var camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(0, 10, 20);
 var shakeT = 0, shakeAmt = 0;
@@ -1985,7 +1993,10 @@ function startGame(){
     try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
   }
   G.state = 'playing'; G.time = GAME_DUR; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0;
-  carSpeed = 0; carYaw = 0; oilT = 0;
+  carSpeed = 0; oilT = 0;
+  // Align car with track direction at start so it faces the right way
+  var _t0 = splineTans[0];
+  carYaw = Math.atan2(-_t0.x, -_t0.z);
   carX = splinePts[0].x; carZ = splinePts[0].z;
   prevLapSign = 0;
   resetAtmosphere();
@@ -2024,7 +2035,32 @@ function startGame(){
   document.getElementById('shine-bar').style.width = '0%';
   document.getElementById('shine-pct').textContent = '0%';
   startEngineSound();
-  startMusic();
+  // 3-2-1-GO countdown before race starts
+  G.state = 'countdown';
+  var cdEl  = document.getElementById('countdown');
+  var cdNum = document.getElementById('countdown-num');
+  cdEl.style.display = 'flex';
+  var cdSeq = [
+    {txt:'3', cls:'countdown-num', delay:0},
+    {txt:'2', cls:'countdown-num', delay:900},
+    {txt:'1', cls:'countdown-num', delay:1800},
+    {txt:'GO!', cls:'countdown-go',  delay:2700},
+  ];
+  cdSeq.forEach(function(s){
+    setTimeout(function(){
+      cdEl.innerHTML = '<span id="countdown-num" class="'+s.cls+'">'+s.txt+'</span>';
+      // Trigger animation restart
+      var el = cdEl.firstChild;
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    }, s.delay);
+  });
+  setTimeout(function(){
+    cdEl.style.display = 'none';
+    G.state = 'playing';
+    startMusic();
+  }, 3600);
 }
 
 function endGame(){
@@ -2142,6 +2178,13 @@ function animate(ts){
     }
     shimAttr.needsUpdate = true;
     shimMat.opacity = G.shine * 0.55 * (0.7 + 0.3*Math.sin(t*2.2));
+  }
+
+  if(G.state === 'countdown'){
+    // Keep engine idling but don't allow movement
+    updateEngineSound(0, 0, false);
+    carGroup.position.set(carX, 0, carZ);
+    carGroup.rotation.y = carYaw;
   }
 
   if(G.state === 'playing'){
