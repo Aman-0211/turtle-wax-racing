@@ -77,10 +77,16 @@ canvas{display:block;}
 #boost-vignette.on{animation:vigPulse .28s ease-in-out infinite alternate;}
 @keyframes vigPulse{from{opacity:0.4;}to{opacity:0.82;}}
 #boost-hud{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ff8800;font-size:11px;font-weight:900;letter-spacing:2px;pointer-events:none;z-index:51;display:none;text-shadow:0 0 12px #ff6600;}
+#wrongway{position:fixed;top:22%;left:50%;transform:translateX(-50%);display:none;pointer-events:none;z-index:120;text-align:center;}
+#wrongway-txt{font-size:clamp(28px,7vw,58px);font-weight:900;color:#ff2200;letter-spacing:3px;text-shadow:0 0 30px #ff2200,0 0 10px #fff;animation:wwFlash .4s ease-in-out infinite alternate;}
+@keyframes wwFlash{from{opacity:1;transform:scale(1);}to{opacity:0.35;transform:scale(0.94);}}
 </style>
 </head>
 <body>
 <canvas id="gc"></canvas>
+
+<!-- WRONG WAY -->
+<div id="wrongway"><div id="wrongway-txt">↩ WRONG WAY!</div></div>
 
 <!-- BOOST VIGNETTE -->
 <div id="boost-vignette"></div>
@@ -2254,6 +2260,7 @@ function endGame(){
   document.getElementById('ctrl-hint').style.display  = 'none';
   document.getElementById('boost-vignette').classList.remove('on');
   document.getElementById('boost-hud').style.display = 'none';
+  document.getElementById('wrongway').style.display = 'none';
   boostActive = false;
   document.getElementById('res-score').textContent = G.score;
   var msg = G.score>800 ? 'LEGENDARY SHINE!' : G.score>500 ? 'BRILLIANT FINISH!' : G.score>250 ? 'GREAT RACING!' : 'Keep practising!';
@@ -2454,6 +2461,13 @@ function animate(ts){
       carSpeed *= 0.6;
     }
 
+    // Wrong-way detection — dot product of car forward vs track tangent
+    // nearTan points in the "correct" driving direction around the circuit
+    var sinYaw2 = Math.sin(carYaw), cosYaw2 = Math.cos(carYaw);
+    var wwDot = (-sinYaw2) * nearTan.x + (-cosYaw2) * nearTan.z;
+    var isWrongWay = (wwDot < -0.45) && (Math.abs(carSpeed) > 1.5);
+    document.getElementById('wrongway').style.display = isWrongWay ? 'block' : 'none';
+
     // Lap detection
     var startPt  = splinePts[0];
     var startTan = splineTans[0];
@@ -2510,7 +2524,7 @@ function animate(ts){
     }
 
     carGroup.position.set(carX, 0, carZ);
-    carGroup.rotation.y = carYaw;
+    carGroup.rotation.y = carYaw + Math.PI;
 
     // Wheel spin
     var wr = carSpeed * dt * 2.0;
