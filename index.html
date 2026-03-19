@@ -69,8 +69,9 @@ canvas{display:block;}
 .boost-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff3300,#ffcc00,#ffffaa);border-radius:5px;transition:width .25s;}
 .boost-bar.full{animation:boostBarPulse .5s ease-in-out infinite alternate;}
 @keyframes boostBarPulse{from{filter:brightness(1);}to{filter:brightness(1.8) drop-shadow(0 0 6px #ffaa00);}}
-#boost-btn{width:82px;height:82px;bottom:140px;right:24px;position:absolute;border-radius:50%;border:3px solid #ff8800;background:radial-gradient(circle,#ff5500,#aa1100);color:#fff;font-size:11px;font-weight:900;letter-spacing:1px;display:none;opacity:0.35;pointer-events:all;}
+#boost-btn{position:fixed;bottom:150px;right:20px;width:88px;height:88px;border-radius:50%;border:3px solid #ff8800;background:radial-gradient(circle,#ff5500,#aa1100);color:#fff;font-size:12px;font-weight:900;letter-spacing:1px;display:none;opacity:0.38;pointer-events:all;z-index:95;cursor:pointer;align-items:center;justify-content:center;text-align:center;flex-direction:column;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 0 14px #ff440066;}
 #boost-btn.ready{opacity:1;animation:boostBtnPulse .55s ease-in-out infinite alternate;}
+#boost-btn:active{transform:scale(0.92);}
 @keyframes boostBtnPulse{from{box-shadow:0 0 16px #ff660077;}to{box-shadow:0 0 50px #ff6600ff,0 0 22px #ffcc00;}}
 #boost-vignette{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:44;opacity:0;background:radial-gradient(ellipse at center,transparent 38%,rgba(255,110,0,0.62) 100%);transition:opacity .15s;}
 #boost-vignette.on{animation:vigPulse .28s ease-in-out infinite alternate;}
@@ -148,8 +149,9 @@ canvas{display:block;}
 <div id="gas-zone" style="display:none;">
   <div class="touch-btn" id="gas-btn" style="position:absolute;">GAS</div>
   <div class="touch-btn" id="brake-btn" style="position:absolute;">BRK</div>
-  <div class="touch-btn" id="boost-btn">⚡<br>BOOST</div>
 </div>
+<!-- Boost button is its own fixed element so gas-zone never clips it -->
+<div id="boost-btn" style="display:none;">⚡<br>BOOST</div>
 <div id="ctrl-hint" style="display:none;">WASD / Arrow Keys &nbsp;|&nbsp; Left=Steer &nbsp;|&nbsp; Right=GAS</div>
 <div id="tilt-ui" style="display:none;">
   <div id="tilt-bar-wrap"><div id="tilt-needle"></div></div>
@@ -2021,7 +2023,9 @@ function boostSound(){
 }
 
 function activateBoost(){
-  if(G.state!=='playing' || boostActive || boostCharge<1.0) return;
+  if(G.state!=='playing') return;
+  if(boostActive){ showNotif('⚡ BOOST ALREADY ON!', '#ff8800'); return; }
+  if(boostCharge<1.0){ showNotif('Collect wax to fill BOOST!', '#ff6600'); return; }
   boostActive=true; boostT=BOOST_DUR; boostCharge=0; boostWasReady=false;
   document.getElementById('boost-bar').style.width='0%';
   document.getElementById('boost-bar').classList.remove('full');
@@ -2288,7 +2292,8 @@ document.getElementById('gas-btn').addEventListener('touchstart',   function(e){
 document.getElementById('gas-btn').addEventListener('touchend',     function(){ touch.gas=false; });
 document.getElementById('brake-btn').addEventListener('touchstart', function(e){ e.preventDefault(); touch.brake=true; }, {passive:false});
 document.getElementById('brake-btn').addEventListener('touchend',   function(){ touch.brake=false; });
-document.getElementById('boost-btn').addEventListener('touchstart',  function(e){ e.preventDefault(); activateBoost(); }, {passive:false});
+document.getElementById('boost-btn').addEventListener('touchstart', function(e){ e.preventDefault(); activateBoost(); }, {passive:false});
+document.getElementById('boost-btn').addEventListener('click',      function(e){ e.preventDefault(); activateBoost(); });
 
 var tiltGamma = 0;
 var tiltNeedle = document.getElementById('tilt-needle');
@@ -2405,8 +2410,8 @@ function animate(ts){
         showNotif('BOOST EMPTY!', '#ff4400');
       }
     }
-    var BOOST_MULT = boostActive ? 1.88 : 1.0;
-    var BOOST_ACCEL = boostActive ? 2.2 : 1.0;
+    var BOOST_MULT = boostActive ? 2.0 : 1.0;   // exactly 2× speed
+    var BOOST_ACCEL = boostActive ? 2.4 : 1.0;
     if(gasOn)        carSpeed = Math.min(MAX_SPD * BOOST_MULT, carSpeed + ACCEL_F * BOOST_ACCEL * dt);
     else if(brakeOn) carSpeed = Math.max(-MAX_SPD*0.4, carSpeed - BRAKE_F*dt);
     else             carSpeed *= (1 - dt*3.2);
