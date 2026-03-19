@@ -1477,10 +1477,12 @@ carGroup.add(shimmer);
 // Traffic cones — dodge them or lose speed
 var cones = [];
 (function(){
-  var coneGeo  = new THREE.ConeGeometry(0.38, 0.9, 8);
-  var bandGeo  = new THREE.CylinderGeometry(0.40, 0.40, 0.18, 8);
-  var coneMat  = new THREE.MeshLambertMaterial({color:0xff5500});
-  var bandMat  = new THREE.MeshLambertMaterial({color:0xffffff});
+  var coneGeo  = new THREE.ConeGeometry(0.62, 1.6, 10);
+  var bandGeo  = new THREE.CylinderGeometry(0.66, 0.66, 0.28, 10);
+  var baseGeo  = new THREE.CylinderGeometry(0.80, 0.82, 0.14, 10);
+  var coneMat  = new THREE.MeshLambertMaterial({color:0xff4400, emissive:new THREE.Color(0x220a00)});
+  var bandMat  = new THREE.MeshLambertMaterial({color:0xffffff, emissive:new THREE.Color(0x333333)});
+  var baseMat  = new THREE.MeshLambertMaterial({color:0x222222});
   // Pick 12 evenly-spaced spline indices, skip first 10 pts (near start line)
   var step = Math.floor(ROAD_SEG / 12);
   for(var ci=0; ci<12; ci++){
@@ -1494,10 +1496,12 @@ var cones = [];
     var cz = sp.z + tn.x * latOff;
     var grp = new THREE.Group();
     var body = new THREE.Mesh(coneGeo, coneMat);
-    body.position.y = 0.45;
+    body.position.y = 0.80;
     var band = new THREE.Mesh(bandGeo, bandMat);
-    band.position.y = 0.28;
-    grp.add(body); grp.add(band);
+    band.position.y = 0.55;
+    var base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.07;
+    grp.add(body); grp.add(band); grp.add(base);
     grp.position.set(cx, 0, cz);
     scene.add(grp);
     cones.push({grp:grp, ox:cx, oz:cz, alive:true, respawnT:0});
@@ -1508,8 +1512,8 @@ var cones = [];
 var oilSlicks = [];
 var oilT = 0; // active oil skid timer
 (function(){
-  var oilGeo = new THREE.CircleGeometry(2.2, 14);
-  var oilMat = new THREE.MeshLambertMaterial({color:0x1a2010, transparent:true, opacity:0.75});
+  var oilGeo = new THREE.CircleGeometry(3.8, 18);
+  var oilMat = new THREE.MeshLambertMaterial({color:0x0a1a18, transparent:true, opacity:0.88});
   var step = Math.floor(ROAD_SEG / 6);
   for(var oi=0; oi<6; oi++){
     var idx = ((oi * step) + 30) % ROAD_SEG;
@@ -1860,23 +1864,44 @@ function collectSound(){
     })(notes[i],i*55);
   }
 }
-function bumpSound(){
+function crashSound(){
   if(!audioCtx) return;
   try{
-    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sawtooth'; o.frequency.setValueAtTime(130,audioCtx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(35,audioCtx.currentTime+0.2);
-    g.gain.setValueAtTime(0.55,audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.25);
-    o.connect(g); g.connect(getMasterOut()); o.start(); o.stop(audioCtx.currentTime+0.25);
-    // Metallic clang
-    var o2=audioCtx.createOscillator(), g2=audioCtx.createGain();
-    o2.type='square'; o2.frequency.value=480;
-    g2.gain.setValueAtTime(0.2,audioCtx.currentTime);
-    g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);
-    o2.connect(g2); g2.connect(getMasterOut()); o2.start(); o2.stop(audioCtx.currentTime+0.08);
+    var now = audioCtx.currentTime;
+    // 1. CRUNCH — white noise burst through distorted bandpass
+    if(sharedNoiseBuf){
+      var nb=audioCtx.createBufferSource(); nb.buffer=sharedNoiseBuf;
+      var bf=audioCtx.createBiquadFilter(); bf.type='bandpass'; bf.frequency.value=320; bf.Q.value=0.6;
+      var ws=audioCtx.createWaveShaper();
+      var wc=new Float32Array(256);
+      for(var i=0;i<256;i++){var x=i/128-1; wc[i]=Math.sign(x)*Math.pow(Math.abs(x),0.3);}
+      ws.curve=wc;
+      var ng=audioCtx.createGain();
+      ng.gain.setValueAtTime(1.4,now); ng.gain.exponentialRampToValueAtTime(0.001,now+0.38);
+      nb.connect(bf); bf.connect(ws); ws.connect(ng); ng.connect(getMasterOut());
+      nb.start(now); nb.stop(now+0.38);
+    }
+    // 2. BODY THUD — low sine slam
+    var lo=audioCtx.createOscillator(), lg=audioCtx.createGain();
+    lo.type='sine'; lo.frequency.setValueAtTime(95,now);
+    lo.frequency.exponentialRampToValueAtTime(28,now+0.18);
+    lg.gain.setValueAtTime(1.2,now); lg.gain.exponentialRampToValueAtTime(0.001,now+0.22);
+    lo.connect(lg); lg.connect(getMasterOut()); lo.start(now); lo.stop(now+0.22);
+    // 3. PLASTIC CLATTER — short descending sawtooth rattle
+    var ro=audioCtx.createOscillator(), rg=audioCtx.createGain();
+    ro.type='sawtooth'; ro.frequency.setValueAtTime(680,now+0.04);
+    ro.frequency.exponentialRampToValueAtTime(120,now+0.28);
+    rg.gain.setValueAtTime(0.5,now+0.04); rg.gain.exponentialRampToValueAtTime(0.001,now+0.30);
+    ro.connect(rg); rg.connect(getMasterOut()); ro.start(now+0.04); ro.stop(now+0.30);
+    // 4. METAL PING — cone bouncing ring
+    var po=audioCtx.createOscillator(), pg=audioCtx.createGain();
+    po.type='triangle'; po.frequency.setValueAtTime(1100,now+0.06);
+    po.frequency.exponentialRampToValueAtTime(480,now+0.45);
+    pg.gain.setValueAtTime(0.28,now+0.06); pg.gain.exponentialRampToValueAtTime(0.001,now+0.50);
+    po.connect(pg); pg.connect(getMasterOut()); po.start(now+0.06); po.stop(now+0.50);
   }catch(e){}
 }
+function bumpSound(){ crashSound(); } // alias kept for compatibility
 function oilSkidSound(){
   if(!audioCtx||!sharedNoiseBuf) return;
   try{
@@ -2275,15 +2300,15 @@ function animate(ts){
         continue;
       }
       var cdx = carX - cn.grp.position.x, cdz = carZ - cn.grp.position.z;
-      if(cdx*cdx + cdz*cdz < 2.8*2.8){
+      if(cdx*cdx + cdz*cdz < 3.2*3.2){
         // Hit! Knock cone away, penalty, shake
         cn.alive = false; cn.respawnT = 12;
         cn.grp.position.set(cn.ox + (Math.random()-0.5)*8, 0, cn.oz + (Math.random()-0.5)*8);
         cn.grp.rotation.z = Math.PI / 2; // cone falls over
         cn.grp.visible = false; // hide knocked cone
-        carSpeed *= 0.52;
-        shakeAmt = 0.22; shakeT = 0.5;
-        bumpSound();
+        carSpeed *= 0.45;
+        shakeAmt = 0.32; shakeT = 0.65;
+        crashSound();
         showNotif('CONE HIT! -Speed', '#ff5500');
       }
     }
