@@ -1473,6 +1473,44 @@ var shimMat  = new THREE.PointsMaterial({color:0xffb850, size:0.16, transparent:
 var shimmer  = new THREE.Points(shimGeo, shimMat);
 carGroup.add(shimmer);
 
+// ─── CONE DEBRIS SYSTEM ──────────────────────────────────────────────────────
+var DEBRIS_N = 28;
+var debrisGeoO = new THREE.BufferGeometry(); // orange pieces
+var debrisPosO = new Float32Array(DEBRIS_N * 3);
+debrisGeoO.setAttribute('position', new THREE.BufferAttribute(debrisPosO, 3));
+var debrisMatO = new THREE.PointsMaterial({color:0xff4400, size:0.55, transparent:true, opacity:0, depthWrite:false});
+var debrisPtsO = new THREE.Points(debrisGeoO, debrisMatO);
+scene.add(debrisPtsO);
+
+var debrisGeoW = new THREE.BufferGeometry(); // white band pieces
+var debrisPosW = new Float32Array(DEBRIS_N * 3);
+debrisGeoW.setAttribute('position', new THREE.BufferAttribute(debrisPosW, 3));
+var debrisMatW = new THREE.PointsMaterial({color:0xffffff, size:0.42, transparent:true, opacity:0, depthWrite:false});
+var debrisPtsW = new THREE.Points(debrisGeoW, debrisMatW);
+scene.add(debrisPtsW);
+
+var debrisAlive = false, debrisT = 0, debrisDur = 1.6;
+var debrisVx = new Float32Array(DEBRIS_N);
+var debrisVy = new Float32Array(DEBRIS_N);
+var debrisVz = new Float32Array(DEBRIS_N);
+
+function triggerConeDebris(cx, cz){
+  debrisAlive = true; debrisT = 0;
+  debrisMatO.opacity = 1.0;
+  debrisMatW.opacity = 0.92;
+  for(var i = 0; i < DEBRIS_N; i++){
+    var angle = Math.random() * Math.PI * 2;
+    var spd   = 5 + Math.random() * 12;
+    debrisVx[i] = Math.cos(angle) * spd;
+    debrisVy[i] = 4 + Math.random() * 9;   // upward launch
+    debrisVz[i] = Math.sin(angle) * spd;
+    debrisPosO[i*3]   = cx; debrisPosO[i*3+1] = 0.5; debrisPosO[i*3+2] = cz;
+    debrisPosW[i*3]   = cx; debrisPosW[i*3+1] = 0.3; debrisPosW[i*3+2] = cz;
+  }
+  debrisGeoO.attributes.position.needsUpdate = true;
+  debrisGeoW.attributes.position.needsUpdate = true;
+}
+
 // ─── OBSTACLES ───────────────────────────────────────────────────────────────
 // Traffic cones — dodge them or lose speed
 var cones = [];
@@ -2301,11 +2339,10 @@ function animate(ts){
       }
       var cdx = carX - cn.grp.position.x, cdz = carZ - cn.grp.position.z;
       if(cdx*cdx + cdz*cdz < 3.2*3.2){
-        // Hit! Knock cone away, penalty, shake
+        // Hit! Explode cone into debris, penalty, shake
         cn.alive = false; cn.respawnT = 12;
-        cn.grp.position.set(cn.ox + (Math.random()-0.5)*8, 0, cn.oz + (Math.random()-0.5)*8);
-        cn.grp.rotation.z = Math.PI / 2; // cone falls over
-        cn.grp.visible = false; // hide knocked cone
+        cn.grp.visible = false; // hide cone, debris replaces it
+        triggerConeDebris(cn.grp.position.x, cn.grp.position.z);
         carSpeed *= 0.45;
         shakeAmt = 0.32; shakeT = 0.65;
         crashSound();
@@ -2384,6 +2421,34 @@ function animate(ts){
       dattr.needsUpdate = true;
     } else {
       dustMat.opacity *= 0.85;
+    }
+
+    // Cone debris physics
+    if(debrisAlive){
+      debrisT += dt;
+      var debrisFade = Math.max(0, 1 - debrisT / debrisDur);
+      debrisMatO.opacity = debrisFade;
+      debrisMatW.opacity = debrisFade * 0.92;
+      if(debrisT >= debrisDur){
+        debrisAlive = false; debrisMatO.opacity = 0; debrisMatW.opacity = 0;
+      } else {
+        for(var dbi = 0; dbi < DEBRIS_N; dbi++){
+          debrisVy[dbi] -= 14 * dt;  // gravity
+          debrisPosO[dbi*3]   += debrisVx[dbi] * dt;
+          debrisPosO[dbi*3+1] += debrisVy[dbi] * dt;
+          debrisPosO[dbi*3+2] += debrisVz[dbi] * dt;
+          debrisPosW[dbi*3]   += debrisVx[dbi] * dt;
+          debrisPosW[dbi*3+1] += debrisVy[dbi] * dt;
+          debrisPosW[dbi*3+2] += debrisVz[dbi] * dt;
+          // Bounce off ground once
+          if(debrisPosO[dbi*3+1] < 0){
+            debrisPosO[dbi*3+1] = 0; debrisPosW[dbi*3+1] = 0;
+            debrisVy[dbi] = Math.abs(debrisVy[dbi]) * 0.3;
+          }
+        }
+        debrisGeoO.attributes.position.needsUpdate = true;
+        debrisGeoW.attributes.position.needsUpdate = true;
+      }
     }
 
     document.getElementById('spd').textContent = Math.round(Math.abs(carSpeed)*10) + ' km/h';
