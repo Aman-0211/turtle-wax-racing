@@ -1627,7 +1627,7 @@ var _startDx = SPLINE_CTRL[1].x - SPLINE_CTRL[0].x;
 var _startDz = SPLINE_CTRL[1].z - SPLINE_CTRL[0].z;
 var _startLen = Math.sqrt(_startDx*_startDx + _startDz*_startDz);
 _startDx /= _startLen; _startDz /= _startLen;  // normalised forward direction
-var START_YAW = Math.atan2(-_startDx, -_startDz); // car faces this direction
+var START_YAW = Math.atan2(_startDx, _startDz); // car front is local +Z; yaw so +Z faces track
 var carSpeed = 0, carYaw = START_YAW;
 var carX = splinePts[0].x, carZ = splinePts[0].z;
 var camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(0, 10, 20);
@@ -2380,7 +2380,7 @@ function animate(ts){
     // Keep engine idling but don't allow movement
     updateEngineSound(0, 0, false);
     carGroup.position.set(carX, 0, carZ);
-    carGroup.rotation.y = carYaw;
+    carGroup.rotation.y = carYaw + Math.PI;
   }
 
   if(G.state === 'playing'){
@@ -2437,8 +2437,8 @@ function animate(ts){
     }
 
     var sinYaw = Math.sin(carYaw), cosYaw = Math.cos(carYaw);
-    carX -= sinYaw * carSpeed * dt;
-    carZ -= cosYaw * carSpeed * dt;
+    carX += sinYaw * carSpeed * dt;
+    carZ += cosYaw * carSpeed * dt;
     updateEngineSound(carSpeed, steerAmt, gasOn);
 
     // Track bounds
@@ -2464,7 +2464,7 @@ function animate(ts){
     // Wrong-way detection — dot product of car forward vs track tangent
     // nearTan points in the "correct" driving direction around the circuit
     var sinYaw2 = Math.sin(carYaw), cosYaw2 = Math.cos(carYaw);
-    var wwDot = (-sinYaw2) * nearTan.x + (-cosYaw2) * nearTan.z;
+    var wwDot = sinYaw2 * nearTan.x + cosYaw2 * nearTan.z;
     var isWrongWay = (wwDot < -0.45) && (Math.abs(carSpeed) > 1.5);
     document.getElementById('wrongway').style.display = isWrongWay ? 'block' : 'none';
 
@@ -2537,11 +2537,11 @@ function animate(ts){
     }
 
     // Camera
-    var behindX = carX + sinYaw*10;
-    var behindZ = carZ + cosYaw*10;
+    var behindX = carX - sinYaw*10;
+    var behindZ = carZ - cosYaw*10;
     var targetCamPos = new THREE.Vector3(behindX, 8.5 + carSpeed*0.08, behindZ);
     camPos.lerp(targetCamPos, dt*6);
-    var lookX = carX - sinYaw*6, lookZ = carZ - cosYaw*6;
+    var lookX = carX + sinYaw*6, lookZ = carZ + cosYaw*6;
     var targetLook = new THREE.Vector3(lookX, 1.2, lookZ);
     camTarget.lerp(targetLook, dt*8);
 
@@ -2585,11 +2585,11 @@ function animate(ts){
     if(boostActive && carSpeed > 2){
       for(var _fs=0; _fs<4; _fs++){
         var _fi = fireHead % FIRE_N; fireHead++;
-        var _rx = carX + sYaw*2.8 + (Math.random()-0.5)*0.9;
-        var _rz = carZ + cYaw*2.8 + (Math.random()-0.5)*0.9;
+        var _rx = carX - sYaw*2.8 + (Math.random()-0.5)*0.9;
+        var _rz = carZ - cYaw*2.8 + (Math.random()-0.5)*0.9;
         firePos[_fi*3]=_rx; firePos[_fi*3+1]=0.45+Math.random()*0.6; firePos[_fi*3+2]=_rz;
         var _sp2 = 2 + Math.random()*5;
-        fireVx[_fi]=sYaw*_sp2; fireVy[_fi]=1.2+Math.random()*3; fireVz[_fi]=cYaw*_sp2;
+        fireVx[_fi]=-sYaw*_sp2; fireVy[_fi]=1.2+Math.random()*3; fireVz[_fi]=-cYaw*_sp2;
         fireAge[_fi]=0;
       }
     }
