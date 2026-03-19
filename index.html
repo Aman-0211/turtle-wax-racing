@@ -62,10 +62,29 @@ canvas{display:block;}
 #countdown-num{font-size:clamp(100px,22vw,200px);font-weight:900;color:#ffcc00;text-shadow:0 0 60px #ffcc00aa,0 0 20px #fff;letter-spacing:-4px;animation:cdPop .45s ease-out;}
 @keyframes cdPop{0%{transform:scale(2.2);opacity:0;}60%{transform:scale(0.88);}100%{transform:scale(1);opacity:1;}}
 #countdown-go{font-size:clamp(60px,14vw,130px);font-weight:900;color:#00ff88;text-shadow:0 0 60px #00ff88aa,0 0 20px #fff;letter-spacing:4px;animation:cdPop .45s ease-out;}
+/* ── BOOST ── */
+#boost-meter{margin-top:7px;}
+.boost-label{color:#ff8800;font-size:10px;letter-spacing:2px;margin-bottom:3px;display:flex;justify-content:space-between;}
+.boost-track{height:9px;background:#2a1200;border-radius:5px;overflow:hidden;}
+.boost-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff3300,#ffcc00,#ffffaa);border-radius:5px;transition:width .25s;}
+.boost-bar.full{animation:boostBarPulse .5s ease-in-out infinite alternate;}
+@keyframes boostBarPulse{from{filter:brightness(1);}to{filter:brightness(1.8) drop-shadow(0 0 6px #ffaa00);}}
+#boost-btn{width:82px;height:82px;bottom:140px;right:24px;position:absolute;border-radius:50%;border:3px solid #ff8800;background:radial-gradient(circle,#ff5500,#aa1100);color:#fff;font-size:11px;font-weight:900;letter-spacing:1px;display:none;opacity:0.35;pointer-events:all;}
+#boost-btn.ready{opacity:1;animation:boostBtnPulse .55s ease-in-out infinite alternate;}
+@keyframes boostBtnPulse{from{box-shadow:0 0 16px #ff660077;}to{box-shadow:0 0 50px #ff6600ff,0 0 22px #ffcc00;}}
+#boost-vignette{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:44;opacity:0;background:radial-gradient(ellipse at center,transparent 38%,rgba(255,110,0,0.62) 100%);transition:opacity .15s;}
+#boost-vignette.on{animation:vigPulse .28s ease-in-out infinite alternate;}
+@keyframes vigPulse{from{opacity:0.4;}to{opacity:0.82;}}
+#boost-hud{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ff8800;font-size:11px;font-weight:900;letter-spacing:2px;pointer-events:none;z-index:51;display:none;text-shadow:0 0 12px #ff6600;}
 </style>
 </head>
 <body>
 <canvas id="gc"></canvas>
+
+<!-- BOOST VIGNETTE -->
+<div id="boost-vignette"></div>
+<!-- BOOST HUD (desktop hint) -->
+<div id="boost-hud">⚡ BOOST ACTIVE</div>
 
 <!-- COUNTDOWN -->
 <div id="countdown"><span id="countdown-num">3</span></div>
@@ -112,6 +131,10 @@ canvas{display:block;}
 <div id="shine-wrap" style="display:none;">
   <div class="shine-label"><span>SHINE LEVEL</span><span id="shine-pct">0%</span></div>
   <div class="shine-track"><div class="shine-bar" id="shine-bar"></div></div>
+  <div id="boost-meter">
+    <div class="boost-label"><span>⚡ BOOST</span><span id="boost-pct">0%</span></div>
+    <div class="boost-track"><div class="boost-bar" id="boost-bar"></div></div>
+  </div>
   <div id="spd">0 km/h</div>
 </div>
 <div id="notif"><div class="notif-item" id="notif-txt"></div></div>
@@ -125,6 +148,7 @@ canvas{display:block;}
 <div id="gas-zone" style="display:none;">
   <div class="touch-btn" id="gas-btn" style="position:absolute;">GAS</div>
   <div class="touch-btn" id="brake-btn" style="position:absolute;">BRK</div>
+  <div class="touch-btn" id="boost-btn">⚡<br>BOOST</div>
 </div>
 <div id="ctrl-hint" style="display:none;">WASD / Arrow Keys &nbsp;|&nbsp; Left=Steer &nbsp;|&nbsp; Right=GAS</div>
 <div id="tilt-ui" style="display:none;">
@@ -1473,6 +1497,24 @@ var shimMat  = new THREE.PointsMaterial({color:0xffb850, size:0.16, transparent:
 var shimmer  = new THREE.Points(shimGeo, shimMat);
 carGroup.add(shimmer);
 
+// ─── EXHAUST FIRE PARTICLES (boost trail) ────────────────────────────────────
+var FIRE_N = 42;
+var fireGeo = new THREE.BufferGeometry();
+var firePos = new Float32Array(FIRE_N * 3);
+var fireCol = new Float32Array(FIRE_N * 3);
+fireGeo.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
+fireGeo.setAttribute('color',    new THREE.BufferAttribute(fireCol, 3));
+var fireMat = new THREE.PointsMaterial({size:0.58, transparent:true, opacity:0.92, vertexColors:true, blending:THREE.AdditiveBlending, depthWrite:false});
+var firePts = new THREE.Points(fireGeo, fireMat);
+scene.add(firePts);
+var fireVx = new Float32Array(FIRE_N), fireVy = new Float32Array(FIRE_N), fireVz = new Float32Array(FIRE_N);
+var fireAge = new Float32Array(FIRE_N);  // 0=fresh, >=1=dead
+var FIRE_MAXAGE = 0.55;
+var fireHead = 0;
+// Park all particles underground initially
+for(var _fi=0; _fi<FIRE_N; _fi++){ firePos[_fi*3+1]=-500; fireAge[_fi]=1; }
+fireGeo.attributes.position.needsUpdate = true;
+
 // ─── CONE DEBRIS SYSTEM ──────────────────────────────────────────────────────
 var DEBRIS_N = 28;
 var debrisGeoO = new THREE.BufferGeometry(); // orange pieces
@@ -1575,6 +1617,9 @@ var carSpeed = 0, carYaw = Math.atan2(-splineTans[0].x, -splineTans[0].z);
 var carX = splinePts[0].x, carZ = splinePts[0].z;
 var camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(0, 10, 20);
 var shakeT = 0, shakeAmt = 0;
+var boostCharge = 0;          // 0..1
+var boostActive = false, boostT = 0, BOOST_DUR = 5.0;
+var boostWasReady = false;
 var lastT = 0, lastSecond = 0;
 var prevLapSign = 0;
 
@@ -1951,6 +1996,59 @@ function oilSkidSound(){
     ns.connect(f); f.connect(g); g.connect(getMasterOut()); ns.start(); ns.stop(audioCtx.currentTime+0.7);
   }catch(e){}
 }
+function boostSound(){
+  if(!audioCtx) return;
+  try{
+    var now = audioCtx.currentTime;
+    // Turbo whoosh — noise sweep through highpass
+    if(sharedNoiseBuf){
+      var nb=audioCtx.createBufferSource(); nb.buffer=sharedNoiseBuf;
+      var f=audioCtx.createBiquadFilter(); f.type='highpass'; f.frequency.setValueAtTime(400,now); f.frequency.exponentialRampToValueAtTime(3000,now+0.5);
+      var g=audioCtx.createGain(); g.gain.setValueAtTime(0.0,now); g.gain.linearRampToValueAtTime(1.4,now+0.06); g.gain.exponentialRampToValueAtTime(0.001,now+1.0);
+      nb.connect(f); f.connect(g); g.connect(getMasterOut()); nb.start(now); nb.stop(now+1.0);
+    }
+    // Power surge — rising sawtooth
+    var o=audioCtx.createOscillator(), g2=audioCtx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(160,now); o.frequency.exponentialRampToValueAtTime(520,now+0.45);
+    g2.gain.setValueAtTime(0.55,now); g2.gain.exponentialRampToValueAtTime(0.001,now+0.55);
+    o.connect(g2); g2.connect(getMasterOut()); o.start(now); o.stop(now+0.55);
+    // Sub thump
+    var s=audioCtx.createOscillator(), sg=audioCtx.createGain();
+    s.type='sine'; s.frequency.setValueAtTime(80,now); s.frequency.exponentialRampToValueAtTime(40,now+0.2);
+    sg.gain.setValueAtTime(1.0,now); sg.gain.exponentialRampToValueAtTime(0.001,now+0.22);
+    s.connect(sg); sg.connect(getMasterOut()); s.start(now); s.stop(now+0.22);
+  }catch(e){}
+}
+
+function activateBoost(){
+  if(G.state!=='playing' || boostActive || boostCharge<1.0) return;
+  boostActive=true; boostT=BOOST_DUR; boostCharge=0; boostWasReady=false;
+  document.getElementById('boost-bar').style.width='0%';
+  document.getElementById('boost-bar').classList.remove('full');
+  document.getElementById('boost-pct').textContent='0%';
+  document.getElementById('boost-btn').classList.remove('ready');
+  document.getElementById('boost-vignette').classList.add('on');
+  document.getElementById('boost-hud').style.display='block';
+  showNotif('⚡ TURBO BOOST!', '#ffaa00');
+  boostSound();
+}
+
+function updateBoostBar(){
+  var pct=Math.round(boostCharge*100);
+  document.getElementById('boost-bar').style.width=pct+'%';
+  document.getElementById('boost-pct').textContent=pct+'%';
+  var barEl=document.getElementById('boost-bar');
+  var btnEl=document.getElementById('boost-btn');
+  if(boostCharge>=1.0 && !boostActive){
+    barEl.classList.add('full');
+    btnEl.classList.add('ready');
+    if(!boostWasReady){ boostWasReady=true; showNotif('⚡ BOOST READY!  Press B / ⚡', '#ffaa00'); }
+  } else {
+    barEl.classList.remove('full');
+    if(!boostActive) btnEl.classList.remove('ready');
+  }
+}
+
 function startFanfare(){
   if(!audioCtx) return;
   // Dramatic rising chord + flourish
@@ -2019,6 +2117,7 @@ function collect(idx){
   if(!pk.alive) return;
   pk.alive = false; pk.group.visible = false; pk.respawnT = 18;
   G.score += pk.pd.pts; G.shine = Math.min(1, G.shine + pk.pd.shine); G.n++;
+  if(!boostActive){ boostCharge = Math.min(1, boostCharge + 0.26); updateBoostBar(); }
   applyShine();
   shakeAmt = 0.18; shakeT = 0.45;
   triggerBurst(pk.pos);
@@ -2057,6 +2156,7 @@ function startGame(){
   }
   G.state = 'playing'; G.time = GAME_DUR; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0;
   carSpeed = 0; oilT = 0;
+  boostCharge = 0; boostActive = false; boostT = 0; boostWasReady = false;
   // Align car with track direction at start so it faces the right way
   var _t0 = splineTans[0];
   carYaw = Math.atan2(-_t0.x, -_t0.z);
@@ -2097,6 +2197,13 @@ function startGame(){
   document.getElementById('hud-laps').textContent  = '0';
   document.getElementById('shine-bar').style.width = '0%';
   document.getElementById('shine-pct').textContent = '0%';
+  document.getElementById('boost-bar').style.width = '0%';
+  document.getElementById('boost-bar').classList.remove('full');
+  document.getElementById('boost-pct').textContent = '0%';
+  document.getElementById('boost-btn').style.display = 'flex';
+  document.getElementById('boost-btn').classList.remove('ready');
+  document.getElementById('boost-vignette').classList.remove('on');
+  document.getElementById('boost-hud').style.display = 'none';
   startEngineSound();
   // 3-2-1-GO countdown before race starts
   G.state = 'countdown';
@@ -2134,6 +2241,9 @@ function endGame(){
   document.getElementById('gas-zone').style.display   = 'none';
   document.getElementById('tilt-ui').style.display    = 'none';
   document.getElementById('ctrl-hint').style.display  = 'none';
+  document.getElementById('boost-vignette').classList.remove('on');
+  document.getElementById('boost-hud').style.display = 'none';
+  boostActive = false;
   document.getElementById('res-score').textContent = G.score;
   var msg = G.score>800 ? 'LEGENDARY SHINE!' : G.score>500 ? 'BRILLIANT FINISH!' : G.score>250 ? 'GREAT RACING!' : 'Keep practising!';
   document.getElementById('res-msg').textContent = msg;
@@ -2147,8 +2257,11 @@ function endGame(){
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────────
 var keys = {};
-document.addEventListener('keydown', function(e){ keys[e.code] = true; });
-document.addEventListener('keyup',   function(e){ keys[e.code] = false; });
+document.addEventListener('keydown', function(e){
+  keys[e.code] = true;
+  if(e.code==='KeyB' || e.code==='ShiftLeft' || e.code==='ShiftRight') activateBoost();
+});
+document.addEventListener('keyup', function(e){ keys[e.code] = false; });
 
 var joy = {active:false, dx:0, dy:0, startX:0, startY:0};
 var joyKnob = document.getElementById('joy-knob');
@@ -2175,6 +2288,7 @@ document.getElementById('gas-btn').addEventListener('touchstart',   function(e){
 document.getElementById('gas-btn').addEventListener('touchend',     function(){ touch.gas=false; });
 document.getElementById('brake-btn').addEventListener('touchstart', function(e){ e.preventDefault(); touch.brake=true; }, {passive:false});
 document.getElementById('brake-btn').addEventListener('touchend',   function(){ touch.brake=false; });
+document.getElementById('boost-btn').addEventListener('touchstart',  function(e){ e.preventDefault(); activateBoost(); }, {passive:false});
 
 var tiltGamma = 0;
 var tiltNeedle = document.getElementById('tilt-needle');
@@ -2276,7 +2390,24 @@ function animate(ts){
     // Update tilt indicator needle
     if(isMobile && tiltNeedle) tiltNeedle.style.left = Math.round(50 + steerAmt * 42) + '%';
 
-    if(gasOn)        carSpeed = Math.min(MAX_SPD, carSpeed + ACCEL_F*dt);
+    // Boost tick
+    if(boostActive){
+      boostT -= dt;
+      var boostFrac = Math.max(0, boostT / BOOST_DUR);
+      document.getElementById('boost-bar').style.width = Math.round(boostFrac*100)+'%';
+      document.getElementById('boost-pct').textContent = Math.round(boostFrac*100)+'%';
+      if(boostT <= 0){
+        boostActive = false;
+        document.getElementById('boost-vignette').classList.remove('on');
+        document.getElementById('boost-hud').style.display = 'none';
+        document.getElementById('boost-bar').style.width = '0%';
+        document.getElementById('boost-pct').textContent = '0%';
+        showNotif('BOOST EMPTY!', '#ff4400');
+      }
+    }
+    var BOOST_MULT = boostActive ? 1.88 : 1.0;
+    var BOOST_ACCEL = boostActive ? 2.2 : 1.0;
+    if(gasOn)        carSpeed = Math.min(MAX_SPD * BOOST_MULT, carSpeed + ACCEL_F * BOOST_ACCEL * dt);
     else if(brakeOn) carSpeed = Math.max(-MAX_SPD*0.4, carSpeed - BRAKE_F*dt);
     else             carSpeed *= (1 - dt*3.2);
 
@@ -2400,7 +2531,7 @@ function animate(ts){
       camera.position.copy(camPos);
     }
     camera.lookAt(camTarget);
-    camera.fov = 75 + carSpeed*0.6;
+    camera.fov = (boostActive ? 88 : 75) + carSpeed*0.6;
     camera.updateProjectionMatrix();
 
     // Dust
@@ -2422,6 +2553,39 @@ function animate(ts){
     } else {
       dustMat.opacity *= 0.85;
     }
+
+    // Exhaust fire trail (boost)
+    var sYaw = Math.sin(carYaw), cYaw = Math.cos(carYaw);
+    if(boostActive && carSpeed > 2){
+      for(var _fs=0; _fs<4; _fs++){
+        var _fi = fireHead % FIRE_N; fireHead++;
+        var _rx = carX + sYaw*2.8 + (Math.random()-0.5)*0.9;
+        var _rz = carZ + cYaw*2.8 + (Math.random()-0.5)*0.9;
+        firePos[_fi*3]=_rx; firePos[_fi*3+1]=0.45+Math.random()*0.6; firePos[_fi*3+2]=_rz;
+        var _sp2 = 2 + Math.random()*5;
+        fireVx[_fi]=sYaw*_sp2; fireVy[_fi]=1.2+Math.random()*3; fireVz[_fi]=cYaw*_sp2;
+        fireAge[_fi]=0;
+      }
+    }
+    var _fireAny=false;
+    for(var _fi2=0; _fi2<FIRE_N; _fi2++){
+      if(fireAge[_fi2]>=1){ firePos[_fi2*3+1]=-500; continue; }
+      fireAge[_fi2]+=dt/FIRE_MAXAGE;
+      var _a=Math.max(0,1-fireAge[_fi2]);
+      firePos[_fi2*3]  +=fireVx[_fi2]*dt;
+      firePos[_fi2*3+1]+=fireVy[_fi2]*dt;
+      firePos[_fi2*3+2]+=fireVz[_fi2]*dt;
+      fireVy[_fi2]-=3*dt;
+      fireCol[_fi2*3]  =_a;
+      fireCol[_fi2*3+1]=_a*(1-Math.min(1,fireAge[_fi2]*1.4));
+      fireCol[_fi2*3+2]=0;
+      _fireAny=true;
+    }
+    if(_fireAny||boostActive){
+      fireGeo.attributes.position.needsUpdate=true;
+      fireGeo.attributes.color.needsUpdate=true;
+    }
+    fireMat.opacity = boostActive ? 0.92 : Math.max(0, fireMat.opacity-dt*2);
 
     // Cone debris physics
     if(debrisAlive){
