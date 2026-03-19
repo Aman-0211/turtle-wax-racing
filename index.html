@@ -1615,7 +1615,14 @@ var oilT = 0; // active oil skid timer
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 var G = {state:'attract', time:GAME_DUR, score:0, shine:0, n:0, laps:0};
-var carSpeed = 0, carYaw = Math.atan2(-splineTans[0].x, -splineTans[0].z);
+// Use ctrl[0]→ctrl[1] vector directly; splineTans[0] is skewed by the closed-
+// curve wrap-around from the last control point and points the wrong way.
+var _startDx = SPLINE_CTRL[1].x - SPLINE_CTRL[0].x;
+var _startDz = SPLINE_CTRL[1].z - SPLINE_CTRL[0].z;
+var _startLen = Math.sqrt(_startDx*_startDx + _startDz*_startDz);
+_startDx /= _startLen; _startDz /= _startLen;  // normalised forward direction
+var START_YAW = Math.atan2(-_startDx, -_startDz); // car faces this direction
+var carSpeed = 0, carYaw = START_YAW;
 var carX = splinePts[0].x, carZ = splinePts[0].z;
 var camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(0, 10, 20);
 var shakeT = 0, shakeAmt = 0;
@@ -2161,10 +2168,10 @@ function startGame(){
   G.state = 'playing'; G.time = GAME_DUR; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0;
   carSpeed = 0; oilT = 0;
   boostCharge = 0; boostActive = false; boostT = 0; boostWasReady = false;
-  // Align car with track direction at start so it faces the right way
-  var _t0 = splineTans[0];
-  carYaw = Math.atan2(-_t0.x, -_t0.z);
-  carX = splinePts[0].x; carZ = splinePts[0].z;
+  // Place car 5 units past the gate on the track side, facing track direction
+  carYaw = START_YAW;
+  carX = splinePts[0].x + _startDx * 5;
+  carZ = splinePts[0].z + _startDz * 5;
   prevLapSign = 0;
   resetAtmosphere();
   // Reset cones to original positions
