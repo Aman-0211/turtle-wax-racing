@@ -10,7 +10,7 @@ body{background:#000;overflow:hidden;font-family:'Arial Black',Arial,sans-serif;
 canvas{display:block;}
 #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 #attract,#result{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:linear-gradient(170deg,#08040a 0%,#0a1a04 55%,#04120a 100%);z-index:100;pointer-events:all;overflow:hidden;padding:0;}
-#result{background:linear-gradient(170deg,#08040a 0%,#180a04 55%,#0a0402 100%);display:none;overflow-y:auto;padding:20px 0;justify-content:center;align-items:center;}
+#result{background:linear-gradient(170deg,#06030f 0%,#0e0418 55%,#060210 100%);display:none;overflow-y:auto;padding:0;justify-content:flex-start;align-items:center;}
 .logo-ring{width:110px;height:110px;border-radius:50%;border:4px solid #00b84a;box-shadow:0 0 28px #00b84a88,inset 0 0 18px #00b84a44;display:flex;align-items:center;justify-content:center;margin-bottom:16px;animation:pulse 2.2s ease-in-out infinite;flex-shrink:0;}
 @keyframes pulse{0%,100%{box-shadow:0 0 28px #00b84a88,inset 0 0 18px #00b84a44;}50%{box-shadow:0 0 52px #00b84acc,inset 0 0 32px #00b84a88;}}
 .logo-ring span{font-size:42px;}
@@ -45,15 +45,51 @@ canvas{display:block;}
 #joy-knob{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.28);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:transform .05s;}
 #gas-btn{width:100px;height:100px;bottom:18px;right:24px;font-size:28px;}
 #brake-btn{width:72px;height:72px;bottom:26px;right:132px;font-size:20px;}
-.shine-ring{width:120px;height:120px;border-radius:50%;margin-bottom:16px;display:flex;align-items:center;justify-content:center;font-size:36px;border:5px solid #00b84a;box-shadow:0 0 40px #00b84a;flex-shrink:0;}
-#result h2{color:#fff;font-size:26px;margin-bottom:4px;}
-#result .score-big{color:#00b84a;font-size:56px;font-weight:900;text-shadow:0 0 24px #00b84a;margin-bottom:4px;}
-#result .msg{color:#aaa;font-size:14px;margin-bottom:18px;}
+/* ── RESULT SCREEN ── */
+.res-content{width:100%;max-width:500px;padding:20px 18px 30px;display:flex;flex-direction:column;align-items:center;gap:0;}
+.res-header{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.res-flag{font-size:32px;animation:resFlagWave .6s ease-in-out infinite alternate;}
+@keyframes resFlagWave{from{transform:rotate(-8deg);}to{transform:rotate(8deg);}}
+.res-title{color:#fff;font-size:clamp(18px,5vw,28px);font-weight:900;letter-spacing:4px;text-shadow:0 0 20px rgba(160,80,255,.7);margin:0;}
+/* big time */
+.res-time-hero{position:relative;background:linear-gradient(135deg,rgba(80,0,160,.35),rgba(0,80,160,.25));border:1.5px solid rgba(150,80,255,.35);border-radius:18px;padding:20px 32px 18px;text-align:center;margin-bottom:14px;width:100%;box-shadow:0 0 40px rgba(120,60,255,.2);backdrop-filter:blur(4px);}
+.res-time-label{color:rgba(200,160,255,.6);font-size:10px;letter-spacing:3px;margin-bottom:6px;}
+.res-time-val{color:#fff;font-size:clamp(44px,13vw,76px);font-weight:900;letter-spacing:-2px;text-shadow:0 0 40px rgba(160,100,255,.9),0 0 16px #fff;line-height:1;font-variant-numeric:tabular-nums;}
+.res-rank-badge{position:absolute;top:-14px;right:14px;font-size:32px;filter:drop-shadow(0 0 10px rgba(255,200,0,.8));}
+/* stats row */
+.res-stats-row{display:flex;gap:10px;width:100%;margin-bottom:12px;}
+.res-stat-box{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;text-align:center;}
+.res-stat-lbl{color:#555;font-size:9px;letter-spacing:2px;margin-bottom:4px;}
+.res-stat-val{color:#00b84a;font-size:20px;font-weight:900;text-shadow:0 0 12px #00b84a88;}
+.res-msg-txt{color:#888;font-size:12px;letter-spacing:2px;margin-bottom:10px;text-align:center;}
+.res-save-prompt{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,184,74,.07);border:1px solid rgba(0,184,74,.22);border-radius:12px;padding:11px 14px;margin-bottom:14px;}
+.res-save-txt{color:#aaa;font-size:11px;line-height:1.4;flex:1;}
+.res-save-btn{flex-shrink:0;background:linear-gradient(135deg,#00b84a,#007a30);color:#fff;border:none;border-radius:8px;padding:9px 13px;font-family:inherit;font-size:10px;font-weight:900;letter-spacing:1px;cursor:pointer;white-space:nowrap;}
 .btn-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;justify-content:center;}
 .btn-share{background:linear-gradient(135deg,#1da1f2,#0d6efd);color:#fff;}
-.btn-again{background:linear-gradient(135deg,#00b84a,#007a30);color:#fff;}
-#res-lb{color:#aaa;font-size:13px;text-align:center;}
-#res-lb h3{color:#00b84a;margin-bottom:6px;}
+.btn-again{background:linear-gradient(135deg,#9b30ff,#5500cc);color:#fff;}
+/* leaderboard */
+#res-lb{width:100%;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;}
+.res-lb-head{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(150,80,255,.08);}
+.res-lb-icon{font-size:18px;}
+.res-lb-title{color:#c070ff;font-size:11px;font-weight:900;letter-spacing:3px;}
+.res-lb-player{margin-left:auto;color:#555;font-size:9px;letter-spacing:1px;}
+.lb-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .2s;animation:lbSlide .3s ease-out both;}
+.lb-row:last-child{border-bottom:none;}
+@keyframes lbSlide{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+.lb-row:nth-child(1){animation-delay:.05s;}
+.lb-row:nth-child(2){animation-delay:.10s;}
+.lb-row:nth-child(3){animation-delay:.15s;}
+.lb-row:nth-child(4){animation-delay:.20s;}
+.lb-row:nth-child(5){animation-delay:.25s;}
+.lb-current{background:rgba(0,184,74,.08);border-left:3px solid #00b84a;}
+.lb-rank{font-size:18px;width:28px;flex-shrink:0;text-align:center;}
+.lb-name{flex:1;color:#ccc;font-size:11px;letter-spacing:1px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-time{color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;}
+.lb-pts{color:#555;font-size:10px;width:44px;text-align:right;flex-shrink:0;}
+.lb-pname{display:block;color:#ccc;font-size:11px;letter-spacing:1px;font-weight:700;}
+.lb-car{display:block;color:#444;font-size:9px;letter-spacing:1px;}
+.lb-empty{color:#444;font-size:12px;text-align:center;padding:18px;}
 #tilt-ui{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:50;text-align:center;width:230px;}
 #tilt-bar-wrap{height:24px;background:rgba(0,0,0,.58);border:1px solid #00b84a55;border-radius:12px;position:relative;overflow:hidden;margin:0 auto 5px;}
 #tilt-needle{width:24px;height:24px;background:radial-gradient(circle,#00ff88,#00b84a);border-radius:50%;position:absolute;top:0;left:50%;margin-left:-12px;box-shadow:0 0 14px #00b84a,0 0 4px #fff;}
@@ -252,9 +288,136 @@ canvas{display:block;}
   .grg-go{padding:9px 14px;font-size:13px;}
   .grg-pus{display:none;}
 }
+
+/* ══════════════════════════════════════════════════════════
+   AUTH / LOGIN SCREEN
+══════════════════════════════════════════════════════════ */
+#auth{position:fixed;top:0;left:0;width:100%;height:100%;z-index:300;display:none;align-items:center;justify-content:center;background:#04020a;overflow:hidden;}
+/* animated bg */
+.auth-bg{position:absolute;inset:0;pointer-events:none;}
+.auth-grid{position:absolute;inset:-20%;background-image:linear-gradient(rgba(0,184,74,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,184,74,.06) 1px,transparent 1px);background-size:44px 44px;animation:authGridMove 6s linear infinite;}
+@keyframes authGridMove{from{transform:translate(0,0);}to{transform:translate(44px,44px);}}
+.auth-glow-tl{position:absolute;top:-15%;left:-15%;width:55%;height:55%;background:radial-gradient(circle,rgba(0,184,74,.18) 0%,transparent 65%);}
+.auth-glow-br{position:absolute;bottom:-15%;right:-15%;width:55%;height:55%;background:radial-gradient(circle,rgba(150,60,255,.14) 0%,transparent 65%);}
+.auth-scanlines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.08) 3px,rgba(0,0,0,.08) 4px);pointer-events:none;}
+/* card */
+.auth-card{position:relative;z-index:2;width:min(420px,92vw);background:rgba(8,4,18,.92);border:1.5px solid rgba(0,184,74,.28);border-radius:22px;box-shadow:0 0 60px rgba(0,184,74,.12),0 0 0 1px rgba(255,255,255,.04);padding:36px 32px 32px;display:flex;flex-direction:column;align-items:center;gap:0;backdrop-filter:blur(8px);animation:authCardIn .45s cubic-bezier(.2,1,.4,1) both;}
+@keyframes authCardIn{from{opacity:0;transform:translateY(28px) scale(.97);}to{opacity:1;transform:none;}}
+/* logo block */
+.auth-logo{display:flex;flex-direction:column;align-items:center;margin-bottom:24px;}
+.auth-logo-ring{width:66px;height:66px;border-radius:50%;border:3px solid #00b84a;box-shadow:0 0 28px #00b84a66;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:10px;animation:pulse 2.4s ease-in-out infinite;}
+.auth-brand{font-size:clamp(16px,4vw,22px);font-weight:900;letter-spacing:4px;color:#00b84a;text-shadow:0 0 16px #00b84a88;}
+.auth-sub{font-size:10px;letter-spacing:3px;color:#ffcc00;margin-top:3px;}
+/* panels */
+.auth-panel{width:100%;display:none;flex-direction:column;align-items:center;gap:12px;}
+.auth-panel.active{display:flex;}
+/* welcome text */
+.auth-welcome{font-size:clamp(12px,3vw,16px);color:#aaa;text-align:center;letter-spacing:1px;line-height:1.6;margin-bottom:4px;}
+.auth-welcome b{color:#fff;}
+/* returning user card */
+.auth-profile-card{width:100%;background:rgba(0,184,74,.07);border:1px solid rgba(0,184,74,.22);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;}
+.auth-avatar{width:44px;height:44px;border-radius:50%;border:2px solid var(--auth-ac,#00b84a);box-shadow:0 0 12px var(--auth-ac,#00b84a44);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;font-weight:900;color:var(--auth-ac,#00b84a);}
+.auth-pname{font-size:18px;font-weight:900;letter-spacing:2px;color:#fff;line-height:1;}
+.auth-ptag{font-size:10px;letter-spacing:2px;color:#555;margin-top:3px;}
+/* form */
+.auth-field{width:100%;display:flex;flex-direction:column;gap:6px;}
+.auth-label{font-size:10px;letter-spacing:2px;color:#555;}
+.auth-input{width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;color:#fff;font-size:16px;font-family:inherit;font-weight:700;letter-spacing:2px;outline:none;transition:border-color .2s,box-shadow .2s;text-transform:uppercase;}
+.auth-input::placeholder{color:#333;text-transform:none;font-weight:400;letter-spacing:0;}
+.auth-input:focus{border-color:#00b84a;box-shadow:0 0 14px rgba(0,184,74,.25);}
+/* color picker */
+.auth-colors{display:flex;gap:10px;justify-content:center;margin-top:4px;}
+.auth-col-opt{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .15s,box-shadow .15s;position:relative;}
+.auth-col-opt.chosen{border-color:#fff;box-shadow:0 0 14px var(--cc);}
+.auth-col-opt:active{transform:scale(.9);}
+/* divider */
+.auth-or{display:flex;align-items:center;gap:10px;width:100%;color:#333;font-size:10px;letter-spacing:2px;}
+.auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);}
+/* buttons */
+.auth-btn{width:100%;padding:14px 18px;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:900;letter-spacing:3px;cursor:pointer;transition:transform .12s,box-shadow .2s;user-select:none;-webkit-tap-highlight-color:transparent;}
+.auth-btn:active{transform:scale(.97);}
+.auth-btn-primary{background:linear-gradient(135deg,#00b84a,#007a30);color:#fff;box-shadow:0 4px 20px rgba(0,184,74,.35);}
+.auth-btn-primary:hover{box-shadow:0 4px 30px rgba(0,184,74,.6);}
+.auth-btn-ghost{background:rgba(255,255,255,.05);color:#888;border:1.5px solid rgba(255,255,255,.1);}
+.auth-btn-ghost:hover{color:#aaa;border-color:rgba(255,255,255,.2);}
+.auth-btn-danger{background:rgba(255,50,50,.08);color:#ff6666;border:1.5px solid rgba(255,60,60,.2);font-size:11px;padding:10px 14px;}
+/* error */
+.auth-err{color:#ff5555;font-size:11px;letter-spacing:1px;text-align:center;min-height:14px;}
+/* player badge in dashboard bar */
+#grg-player-badge{display:flex;align-items:center;gap:7px;cursor:pointer;}
+.grg-player-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;border:2px solid var(--auth-ac,#00b84a);}
+.grg-player-info{line-height:1.2;}
+.grg-player-name{font-size:10px;font-weight:900;letter-spacing:1px;color:#fff;}
+.grg-player-mode{font-size:8px;letter-spacing:1px;color:#555;}
+@media(max-width:400px){
+  .auth-card{padding:28px 18px 24px;}
+  .auth-brand{font-size:15px;}
+}
 </style>
 </head>
 <body>
+<!-- ══ AUTH SCREEN ══ -->
+<div id="auth">
+  <!-- animated background -->
+  <div class="auth-bg">
+    <div class="auth-grid"></div>
+    <div class="auth-glow-tl"></div>
+    <div class="auth-glow-br"></div>
+    <div class="auth-scanlines"></div>
+  </div>
+
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="auth-logo-ring">&#x1F422;</div>
+      <div class="auth-brand">TURTLE WAX</div>
+      <div class="auth-sub">#ROADTRIPUNITED2026 RACING</div>
+    </div>
+
+    <!-- Panel A: returning player -->
+    <div class="auth-panel" id="auth-panel-return">
+      <div class="auth-welcome">Welcome back, racer!</div>
+      <div class="auth-profile-card" id="auth-profile-card">
+        <div class="auth-avatar" id="auth-avatar-letter">R</div>
+        <div>
+          <div class="auth-pname" id="auth-return-name">RACER</div>
+          <div class="auth-ptag" id="auth-return-tag">REGISTERED DRIVER</div>
+        </div>
+      </div>
+      <button class="auth-btn auth-btn-primary" id="auth-continue-btn">&#x26A1;&nbsp; CONTINUE RACING</button>
+      <button class="auth-btn auth-btn-ghost" id="auth-switch-btn">Switch Account</button>
+    </div>
+
+    <!-- Panel B: fresh start -->
+    <div class="auth-panel" id="auth-panel-main">
+      <div class="auth-welcome">Choose how to play:<br><b>Save your best times</b> or jump straight in.</div>
+      <button class="auth-btn auth-btn-primary" id="auth-show-register-btn">&#x1F464;&nbsp; CREATE PROFILE</button>
+      <div class="auth-or">OR</div>
+      <button class="auth-btn auth-btn-ghost" id="auth-guest-btn">&#x1F3CE;&nbsp; PLAY AS GUEST</button>
+    </div>
+
+    <!-- Panel C: create profile form -->
+    <div class="auth-panel" id="auth-panel-form">
+      <div class="auth-field">
+        <div class="auth-label">YOUR RACING NAME</div>
+        <input class="auth-input" id="auth-name-input" type="text" maxlength="12" placeholder="e.g. SPEED_DEMON" autocomplete="off" spellcheck="false">
+        <div class="auth-err" id="auth-err"></div>
+      </div>
+      <div class="auth-field">
+        <div class="auth-label">PICK YOUR COLOUR</div>
+        <div class="auth-colors" id="auth-colors"></div>
+      </div>
+      <button class="auth-btn auth-btn-primary" id="auth-register-btn">&#x2714;&nbsp; ENTER RACE</button>
+      <button class="auth-btn auth-btn-ghost" id="auth-back-btn">&#x2190; Back</button>
+    </div>
+
+    <!-- logout (shown at bottom of return panel) -->
+    <div id="auth-logout-wrap" style="margin-top:8px;display:none;">
+      <button class="auth-btn auth-btn-danger" id="auth-logout-btn">&#x1F6AA;&nbsp; Sign Out</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="gc"></canvas>
 
 <!-- WRONG WAY -->
@@ -287,12 +450,17 @@ canvas{display:block;}
       </div>
     </div>
     <div class="grg-bar-mid">
-      <div class="grg-timer-badge">&#x23F1; 60 SEC</div>
+      <div class="grg-timer-badge">&#x1F3CE; 4 LAPS</div>
       <div class="grg-garage-lbl">GARAGE</div>
     </div>
     <div class="grg-lb-side">
-      <div class="grg-lb-hdg">&#x1F3C6; TOP SCORES</div>
-      <div class="grg-lb-rows" id="attract-lb-list">—</div>
+      <div id="grg-player-badge">
+        <div class="grg-player-dot" id="grg-player-dot">?</div>
+        <div class="grg-player-info">
+          <div class="grg-player-name" id="grg-player-name">GUEST</div>
+          <div class="grg-player-mode" id="grg-player-mode">TAP TO SIGN IN</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -324,7 +492,7 @@ canvas{display:block;}
       </div>
     </div>
     <div class="grg-start-wrap">
-      <div class="grg-race-info">CIRCUIT RACE &nbsp;&#x2022;&nbsp; 60 LAPS</div>
+      <div class="grg-race-info">CIRCUIT RACE &nbsp;&#x2022;&nbsp; 4 LAPS</div>
       <button class="grg-go" id="start-btn">&#x26A1;&nbsp;START RACE</button>
     </div>
   </div>
@@ -332,23 +500,58 @@ canvas{display:block;}
 
 <!-- RESULT -->
 <div id="result">
-  <div class="shine-ring" id="res-ring">&#x2728;</div>
-  <h2>RACE COMPLETE</h2>
-  <div class="score-big" id="res-score">0</div>
-  <div class="msg" id="res-msg">Keep practising!</div>
-  <div class="btn-row">
-    <button class="btn btn-share" id="share-btn">SHARE</button>
-    <button class="btn btn-again" id="again-btn">RACE AGAIN</button>
+  <div class="res-content">
+    <!-- Header -->
+    <div class="res-header">
+      <div class="res-flag">&#x1F3C1;</div>
+      <h2 class="res-title">RACE COMPLETE</h2>
+    </div>
+    <!-- Big time hero -->
+    <div class="res-time-hero">
+      <div class="res-rank-badge" id="res-rank"></div>
+      <div class="res-time-label">FINISH TIME</div>
+      <div class="res-time-val" id="res-time">0:00.0</div>
+    </div>
+    <!-- Secondary stats -->
+    <div class="res-stats-row">
+      <div class="res-stat-box">
+        <div class="res-stat-lbl">SCORE</div>
+        <div class="res-stat-val" id="res-score">0 pts</div>
+      </div>
+      <div class="res-stat-box">
+        <div class="res-stat-lbl">LAPS</div>
+        <div class="res-stat-val">4 / 4</div>
+      </div>
+    </div>
+    <div class="res-msg-txt" id="res-msg">Keep practising!</div>
+    <!-- Save prompt (shown only for guests) -->
+    <div class="res-save-prompt" id="res-save-prompt" style="display:none;">
+      <span class="res-save-txt">&#x1F4BE; Sign in to save your time to the leaderboard</span>
+      <button class="res-save-btn" id="res-save-btn">SIGN IN / SIGN UP</button>
+    </div>
+    <!-- Buttons -->
+    <div class="btn-row">
+      <button class="btn btn-share" id="share-btn">&#x1F4E4;&nbsp;SHARE</button>
+      <button class="btn btn-again" id="again-btn">&#x26A1;&nbsp;RACE AGAIN</button>
+    </div>
+    <!-- Leaderboard -->
+    <div id="res-lb">
+      <div class="res-lb-head">
+        <span class="res-lb-icon">&#x1F3C6;</span>
+        <span class="res-lb-title">BEST TIMES</span>
+        <span class="res-lb-player" id="res-lb-player"></span>
+      </div>
+      <div id="res-lb-list"></div>
+    </div>
   </div>
-  <div id="res-lb"><h3>LEADERBOARD</h3><div id="res-lb-list"></div></div>
 </div>
 
 <!-- HUD -->
 <div id="hud" style="display:none;">
   <div class="hud-top">
-    <div class="hud-box"><div class="hud-label">TIME</div><div class="hud-val" id="hud-time">60</div></div>
+    <div class="hud-box"><div class="hud-label">TIME</div><div class="hud-val" id="hud-time">0:00</div></div>
     <div class="hud-box"><div class="hud-label">SCORE</div><div class="hud-val" id="hud-score">0</div></div>
-    <div class="hud-box"><div class="hud-label">LAPS</div><div class="hud-val" id="hud-laps">0</div></div>
+    <div class="hud-box"><div class="hud-label">LAP</div><div class="hud-val" id="hud-laps">0 / 4</div></div>
   </div>
 </div>
 <div id="shine-wrap" style="display:none;">
@@ -386,7 +589,7 @@ canvas{display:block;}
 'use strict';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-var GAME_DUR  = 60;
+var TOTAL_LAPS = 4;
 var MAX_SPD   = 24;
 var ACCEL_F   = 16;
 var BRAKE_F   = 28;
@@ -2138,7 +2341,7 @@ var oilT = 0; // active oil skid timer
 })();
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
-var G = {state:'attract', time:GAME_DUR, score:0, shine:0, n:0, laps:0};
+var G = {state:'attract', time:0, score:0, shine:0, n:0, laps:0, raceTs:-1};
 // Use ctrl[0]→ctrl[1] vector directly; splineTans[0] is skewed by the closed-
 // curve wrap-around from the last control point and points the wrong way.
 var _startDx = SPLINE_CTRL[1].x - SPLINE_CTRL[0].x;
@@ -2665,24 +2868,221 @@ function collect(idx){
   document.getElementById('shine-pct').textContent = Math.round(G.shine*100) + '%';
 }
 
-// Leaderboard
+// ─── PLAYER PROFILE ──────────────────────────────────────────────────────────
+// Profile: {name:'RACER', color:'#00b84a', isGuest:false}
+var playerProfile = null;
+var AUTH_COLORS = ['#00b84a','#ff3300','#00aaff','#ff9900','#cc00ff','#ffcc00'];
+
+function getProfile(){
+  try{
+    var raw = localStorage.getItem('tw3adv_profile');
+    if(!raw) return null;
+    var p = JSON.parse(raw);
+    return (p && p.name) ? p : null;
+  }catch(e){ return null; }
+}
+function saveProfile(p){
+  try{ localStorage.setItem('tw3adv_profile', JSON.stringify(p)); }catch(e){}
+}
+function clearProfile(){
+  try{ localStorage.removeItem('tw3adv_profile'); }catch(e){}
+}
+function getInitial(name){ return (name || '?')[0].toUpperCase(); }
+
+// ── Auth UI helpers ───────────────────────────────────────────────────────────
+var _authSelectedColor = AUTH_COLORS[0];
+
+function _buildColorPicker(){
+  var wrap = document.getElementById('auth-colors');
+  wrap.innerHTML = '';
+  AUTH_COLORS.forEach(function(c, i){
+    var el = document.createElement('div');
+    el.className = 'auth-col-opt' + (c === _authSelectedColor ? ' chosen' : '');
+    el.style.background = c;
+    el.style.setProperty('--cc', c);
+    el.title = c;
+    el.addEventListener('click', function(){
+      _authSelectedColor = c;
+      wrap.querySelectorAll('.auth-col-opt').forEach(function(e){ e.classList.remove('chosen'); });
+      el.classList.add('chosen');
+    });
+    wrap.appendChild(el);
+  });
+}
+
+function _showAuthPanel(id){
+  ['auth-panel-return','auth-panel-main','auth-panel-form'].forEach(function(pid){
+    document.getElementById(pid).classList.toggle('active', pid === id);
+  });
+}
+
+function _applyProfileToDash(p){
+  var dot  = document.getElementById('grg-player-dot');
+  var name = document.getElementById('grg-player-name');
+  var mode = document.getElementById('grg-player-mode');
+  if(!p || p.isGuest){
+    dot.textContent = '&#x1F3CE;';
+    dot.innerHTML   = '&#x1F3CE;';
+    dot.style.borderColor = '#555';
+    name.textContent = 'GUEST';
+    mode.textContent = 'TAP TO SIGN IN';
+  } else {
+    dot.textContent = getInitial(p.name);
+    dot.style.borderColor = p.color || '#00b84a';
+    dot.style.setProperty('--auth-ac', p.color || '#00b84a');
+    name.textContent = p.name.toUpperCase();
+    mode.textContent = 'REGISTERED DRIVER';
+  }
+}
+
+function initAuth(){
+  _buildColorPicker();
+  var saved = getProfile();
+  if(saved && !saved.isGuest){
+    playerProfile = saved;
+    // Show returning player panel
+    document.getElementById('auth-return-name').textContent = saved.name.toUpperCase();
+    document.getElementById('auth-return-tag').textContent  = 'REGISTERED DRIVER';
+    var avatar = document.getElementById('auth-avatar-letter');
+    avatar.textContent = getInitial(saved.name);
+    avatar.style.setProperty('--auth-ac', saved.color || '#00b84a');
+    avatar.style.borderColor = saved.color || '#00b84a';
+    document.getElementById('auth-logout-wrap').style.display = 'block';
+    _showAuthPanel('auth-panel-return');
+  } else {
+    playerProfile = null;
+    _showAuthPanel('auth-panel-main');
+  }
+  document.getElementById('auth').style.display = 'flex';
+}
+
+function closeAuth(){
+  var el = document.getElementById('auth');
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .3s';
+  setTimeout(function(){ el.style.display = 'none'; el.style.opacity = ''; el.style.transition = ''; }, 300);
+  _applyProfileToDash(playerProfile);
+}
+
+function showAuthFromDash(){
+  var el = document.getElementById('auth');
+  el.style.display = 'flex';
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .3s';
+  requestAnimationFrame(function(){ el.style.opacity = '1'; });
+  var saved = getProfile();
+  if(saved && !saved.isGuest){
+    document.getElementById('auth-return-name').textContent = saved.name.toUpperCase();
+    var avatar = document.getElementById('auth-avatar-letter');
+    avatar.textContent = getInitial(saved.name);
+    avatar.style.setProperty('--auth-ac', saved.color || '#00b84a');
+    avatar.style.borderColor = saved.color || '#00b84a';
+    document.getElementById('auth-logout-wrap').style.display = 'block';
+    _showAuthPanel('auth-panel-return');
+  } else {
+    _showAuthPanel('auth-panel-main');
+  }
+}
+
+// ── Button wiring (runs after DOM is ready) ───────────────────────────────────
+document.getElementById('auth-continue-btn').addEventListener('click', function(){
+  closeAuth();
+});
+document.getElementById('auth-switch-btn').addEventListener('click', function(){
+  document.getElementById('auth-logout-wrap').style.display = 'none';
+  _showAuthPanel('auth-panel-main');
+});
+document.getElementById('auth-show-register-btn').addEventListener('click', function(){
+  document.getElementById('auth-name-input').value = '';
+  document.getElementById('auth-err').textContent = '';
+  _authSelectedColor = AUTH_COLORS[0];
+  _buildColorPicker();
+  _showAuthPanel('auth-panel-form');
+});
+document.getElementById('auth-guest-btn').addEventListener('click', function(){
+  playerProfile = {name:'GUEST', color:'#555555', isGuest:true};
+  closeAuth();
+});
+document.getElementById('auth-back-btn').addEventListener('click', function(){
+  _showAuthPanel('auth-panel-main');
+});
+document.getElementById('auth-register-btn').addEventListener('click', function(){
+  var raw = document.getElementById('auth-name-input').value.trim().toUpperCase();
+  var errEl = document.getElementById('auth-err');
+  if(raw.length < 2){ errEl.textContent = 'Name must be at least 2 characters'; return; }
+  if(!/^[A-Z0-9_\- ]+$/.test(raw)){ errEl.textContent = 'Letters, numbers, _ and - only'; return; }
+  errEl.textContent = '';
+  playerProfile = {name: raw, color: _authSelectedColor, isGuest: false};
+  saveProfile(playerProfile);
+  closeAuth();
+});
+document.getElementById('auth-logout-btn').addEventListener('click', function(){
+  clearProfile();
+  playerProfile = null;
+  document.getElementById('auth-logout-wrap').style.display = 'none';
+  _showAuthPanel('auth-panel-main');
+});
+document.getElementById('auth-name-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('auth-register-btn').click();
+});
+document.getElementById('grg-player-badge').addEventListener('click', showAuthFromDash);
+
+// On load: silently restore saved profile or default to guest — no modal
+(function(){
+  var saved = getProfile();
+  playerProfile = (saved && !saved.isGuest) ? saved : {name:'GUEST', color:'#555555', isGuest:true};
+  _applyProfileToDash(playerProfile);
+})();
+
+// ─── TIME FORMAT HELPERS ──────────────────────────────────────────────────────
+function fmtTime(secs){
+  var s = Math.floor(secs);
+  var m = Math.floor(s / 60);
+  var ss = s % 60;
+  return m + ':' + (ss < 10 ? '0' : '') + ss;
+}
+function fmtTimeMs(secs){
+  var m = Math.floor(secs / 60);
+  var s = secs % 60;
+  var si = Math.floor(s);
+  var t = Math.floor((s - si) * 10);
+  return m + ':' + (si < 10 ? '0' : '') + si + '.' + t;
+}
+
+// Leaderboard  — stores [{t:secs(float), s:score, v:vehicleName}], sorted by t ascending (fastest first)
 function getLB(){
   try{
-    var raw = JSON.parse(localStorage.getItem('tw3adv_lb') || '[]');
-    return raw.map(function(s){ return Number(s); }).filter(function(s){ return !isNaN(s) && s >= 0; });
+    var raw = JSON.parse(localStorage.getItem('tw3adv_lb2') || '[]');
+    if(!Array.isArray(raw)) return [];
+    return raw.filter(function(e){ return e && typeof e.t === 'number' && e.t > 0; });
   }catch(e){ return []; }
 }
-function saveLB(scores){
-  try{ localStorage.setItem('tw3adv_lb', JSON.stringify(scores)); }catch(e){}
+function saveLB(entries){
+  try{ localStorage.setItem('tw3adv_lb2', JSON.stringify(entries)); }catch(e){}
 }
-function addScore(s){
-  var lb = getLB(); lb.push(s); lb.sort(function(a,b){ return b-a; }); lb.splice(5);
-  saveLB(lb); return lb;
-}
-function renderLB(el){
+function addRaceResult(timeSecs, score, vehicleIdx){
   var lb = getLB();
-  if(!lb.length){ el.innerHTML = 'No scores yet'; return; }
-  el.innerHTML = lb.map(function(s, i){ return '<div>'+(i+1)+'. <b>'+s+'</b> pts</div>'; }).join('');
+  var pName = (playerProfile && playerProfile.name) ? playerProfile.name : 'GUEST';
+  lb.push({t: Math.round(timeSecs * 10) / 10, s: score, v: pName, car: VEHICLES[vehicleIdx].name});
+  lb.sort(function(a,b){ return a.t - b.t; });
+  lb.splice(5);
+  saveLB(lb);
+  return lb;
+}
+function renderLB(el, currentT){
+  var lb = getLB();
+  if(!lb.length){ el.innerHTML = '<div class="lb-empty">No races finished yet</div>'; return; }
+  var medals = ['🥇','🥈','🥉'];
+  el.innerHTML = lb.map(function(e, i){
+    var isCurrent = (currentT !== undefined && Math.abs(e.t - Math.round(currentT*10)/10) < 0.05);
+    return '<div class="lb-row'+(isCurrent?' lb-current':'')+'">'
+      + '<span class="lb-rank">'+(medals[i] || (i+1)+'.')+'</span>'
+      + '<span class="lb-name"><span class="lb-pname">'+(e.v || 'GUEST')+'</span>'
+          + (e.car ? '<span class="lb-car"> '+e.car+'</span>' : '')+'</span>'
+      + '<span class="lb-time">'+fmtTimeMs(e.t)+'</span>'
+      + '<span class="lb-pts">'+e.s+'</span>'
+      + '</div>';
+  }).join('');
 }
 
 function startGame(){
@@ -2700,7 +3100,7 @@ function startGame(){
   var _sc = new THREE.Color(veh.color);
   DIRTY.setRGB(_sc.r*0.20, _sc.g*0.20, _sc.b*0.20);
   buildCar(selectedVehicle);
-  G.state = 'playing'; G.time = GAME_DUR; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0;
+  G.state = 'playing'; G.time = 0; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0; G.raceTs = -1;
   carSpeed = 0; oilT = 0;
   boostCharge = 0; boostActive = false; boostT = 0; boostWasReady = false;
   // Place car 5 units past the gate on the track side, facing track direction
@@ -2738,9 +3138,9 @@ function startGame(){
     document.getElementById('tilt-ui').style.display = 'none';
     document.getElementById('ctrl-hint').textContent = 'WASD / Arrow Keys \u00a0|\u00a0 Left=Steer \u00a0|\u00a0 Right=GAS';
   }
-  document.getElementById('hud-time').textContent  = GAME_DUR;
+  document.getElementById('hud-time').textContent  = '0:00';
   document.getElementById('hud-score').textContent = '0';
-  document.getElementById('hud-laps').textContent  = '0';
+  document.getElementById('hud-laps').textContent  = '0 / ' + TOTAL_LAPS;
   document.getElementById('shine-bar').style.width = '0%';
   document.getElementById('shine-pct').textContent = '0%';
   document.getElementById('boost-bar').style.width = '0%';
@@ -2791,11 +3191,22 @@ function endGame(){
   document.getElementById('boost-hud').style.display = 'none';
   document.getElementById('wrongway').style.display = 'none';
   boostActive = false;
-  document.getElementById('res-score').textContent = G.score;
+  var finalTime = G.time;
+  document.getElementById('res-time').textContent = fmtTimeMs(finalTime);
+  document.getElementById('res-score').textContent = G.score + ' pts';
   var msg = G.score>800 ? 'LEGENDARY SHINE!' : G.score>500 ? 'BRILLIANT FINISH!' : G.score>250 ? 'GREAT RACING!' : 'Keep practising!';
   document.getElementById('res-msg').textContent = msg;
-  addScore(G.score);
-  renderLB(document.getElementById('res-lb-list'));
+  addRaceResult(finalTime, G.score, selectedVehicle);
+  // Determine rank
+  var lb = getLB();
+  var rank = lb.findIndex(function(e){ return Math.abs(e.t - Math.round(finalTime*10)/10) < 0.05; }) + 1;
+  var rankMedals = ['🥇','🥈','🥉'];
+  document.getElementById('res-rank').textContent = rank > 0 ? (rankMedals[rank-1] || '#'+rank) : '';
+  var isGuest = !playerProfile || playerProfile.isGuest;
+  var pn = isGuest ? 'GUEST' : playerProfile.name;
+  document.getElementById('res-lb-player').textContent = pn;
+  document.getElementById('res-save-prompt').style.display = isGuest ? 'flex' : 'none';
+  renderLB(document.getElementById('res-lb-list'), finalTime);
   document.getElementById('result').style.display = 'flex';
   stopEngineSound();
   stopMusic();
@@ -2850,8 +3261,26 @@ window.addEventListener('resize', function(){
 
 document.getElementById('start-btn').addEventListener('click', function(){ startGame(); });
 document.getElementById('again-btn').addEventListener('click', function(){ startGame(); });
+document.getElementById('res-save-btn').addEventListener('click', function(){
+  // Open auth from result screen — after sign-in, re-save the result with new name
+  var _savedTime = G.time, _savedScore = G.score, _savedVeh = selectedVehicle;
+  showAuthFromDash();
+  // After auth closes, re-record the result under the new profile name
+  var _origClose = closeAuth;
+  closeAuth = function(){
+    _origClose();
+    closeAuth = _origClose; // restore
+    if(playerProfile && !playerProfile.isGuest){
+      addRaceResult(_savedTime, _savedScore, _savedVeh);
+      document.getElementById('res-save-prompt').style.display = 'none';
+      var pn = playerProfile.name;
+      document.getElementById('res-lb-player').textContent = pn;
+      renderLB(document.getElementById('res-lb-list'), _savedTime);
+    }
+  };
+});
 document.getElementById('share-btn').addEventListener('click', function(){
-  var txt = 'I scored '+G.score+' pts in Turtle Wax #RoadTripUnited2026 Racing! Can you beat me?';
+  var txt = 'I finished 4 laps in '+fmtTimeMs(G.time)+' ('+G.score+' pts) in Turtle Wax #RoadTripUnited2026 Racing! Can you beat me?';
   if(navigator.share){
     navigator.share({title:'Turtle Wax Racing', text:txt, url:window.location.href});
   } else {
@@ -2869,7 +3298,7 @@ document.getElementById('share-btn').addEventListener('click', function(){
   }catch(e){}
 })();
 
-renderLB(document.getElementById('attract-lb-list'));
+// (attract-lb-list replaced by player badge — no sidebar leaderboard)
 
 // ─── GARAGE SYSTEM ───────────────────────────────────────────────────────────
 var _pvEntries = [];    // strip mini cars
@@ -3062,15 +3491,11 @@ function animate(ts){
   lastT = ts;
   var t = ts * 0.001;
 
-  // Timer
+  // Stopwatch (counts up while playing)
   if(G.state === 'playing'){
-    if(ts - lastSecond >= 1000){
-      lastSecond = ts;
-      G.time = Math.max(0, G.time - 1);
-      document.getElementById('hud-time').textContent = G.time;
-      if(G.time === 0){ endGame(); }
-      if(G.time === 10){ beep(880, 0.08, 0.15); }
-    }
+    if(G.raceTs < 0) G.raceTs = ts;
+    G.time = (ts - G.raceTs) / 1000;
+    document.getElementById('hud-time').textContent = fmtTime(G.time);
   }
 
   // Shimmer
@@ -3186,7 +3611,11 @@ function animate(ts){
     var proj = (carX - startPt.x)*startTan.x + (carZ - startPt.z)*startTan.z;
     if(prevLapSign < 0 && proj >= 0){
       G.laps++;
-      document.getElementById('hud-laps').textContent = G.laps;
+      document.getElementById('hud-laps').textContent = G.laps + ' / ' + TOTAL_LAPS;
+      if(G.laps >= TOTAL_LAPS){
+        endGame();
+        return;
+      }
       var lapMsgs = ['LAP 2 — NIGHT! 🌙','LAP 3 — DAWN! 🌅','LAP 4 — STORM! ⛈'];
       var lapMsg  = lapMsgs[G.laps - 2] || ('LAP ' + G.laps + '!');
       showNotif(lapMsg, '#00b84a');
