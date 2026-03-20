@@ -752,13 +752,12 @@ for(var _si=0; _si<=ROAD_SEG; _si++){
 }
 var N_PTS = splinePts.length;
 
-var trackGroup = new THREE.Group();
-scene.add(trackGroup);
 var currentBuiltTrack = -1;
 // Expose recolorable materials (set by IIFEs below)
 var groundMat, groundPatchMats = [];
 var treeTrunkMat, treefoliageMats = [], bushMat;
 var lampGlowMat, lampHaloMat, lampPointLights = [];
+var trackGroup; // initialized after scene is created (below)
 
 // ─── RENDERER ────────────────────────────────────────────────────────────────
 var renderer = new THREE.WebGLRenderer({
@@ -776,6 +775,8 @@ renderer.outputEncoding = THREE.sRGBEncoding;
 
 var scene  = new THREE.Scene();
 scene.fog  = new THREE.FogExp2(0xc05818, 0.009);
+trackGroup = new THREE.Group();
+scene.add(trackGroup);
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 380);
 
 // ─── LIGHTING ────────────────────────────────────────────────────────────────
@@ -1291,7 +1292,7 @@ buildBarriers();
 })();
 
 // ─── GRANDSTANDS ─────────────────────────────────────────────────────────────
-(function(){
+function buildGrandstands(){
   var ROWS    = 5;
   var gndMat  = new THREE.MeshLambertMaterial({color:0x444440});
   var seatHexColors = [0x3344aa, 0xdd2222, 0x33aa33, 0xeeee22, 0xaa3399];
@@ -1301,7 +1302,7 @@ buildBarriers();
     var gtan  = trackCurve.getTangent(gt + 0.05);
     var gnx   = gtan.z, gnz = -gtan.x;
     var gside = (g % 2 === 0) ? 1 : -1;
-    var DIST  = ROAD_HW + 18 + Math.random()*8;
+    var DIST  = ROAD_HW + 20 + Math.random()*8;
     var gbx   = gpt.x + gnx*DIST*gside;
     var gbz   = gpt.z + gnz*DIST*gside;
     var gang  = Math.atan2(gnx*gside, gnz*gside);
@@ -1319,17 +1320,17 @@ buildBarriers();
     }
     gGroup.position.set(gbx, 0, gbz);
     gGroup.rotation.y = gang;
-    scene.add(gGroup);
+    trackGroup.add(gGroup);
   }
-})();
+}
+buildGrandstands();
 
 // ─── LAMP POSTS ──────────────────────────────────────────────────────────────
-(function(){
+function buildLampPosts(){
+  lampPointLights = [];
   var lpPostMat = new THREE.MeshLambertMaterial({color:0x909090});
   lampGlowMat = new THREE.MeshStandardMaterial({color:0xffd080, emissive:new THREE.Color(0xffc060), emissiveIntensity:5.0});
   lampHaloMat = new THREE.MeshBasicMaterial({color:0xffaa30, transparent:true, opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false});
-  var lpGlowMat = lampGlowMat;
-  var lpHaloMat = lampHaloMat;
   var LAMP_STEP = 9;
   for(var i=0; i<N_PTS; i+=LAMP_STEP){
     var sp  = splinePts[i];
@@ -1341,28 +1342,29 @@ buildBarriers();
     var lpz = sp.z + lnz*LDIST*lside;
     var post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, 9.0, 8), lpPostMat);
     post.position.set(lpx, 4.5, lpz);
-    scene.add(post);
+    trackGroup.add(post);
     var armLen = 3.0;
     var armX = lpx - lnx*lside*armLen*0.5;
     var armZ = lpz - lnz*lside*armLen*0.5;
     var arm  = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.12, 0.12), lpPostMat);
     arm.position.set(armX, 9.0, armZ);
     arm.rotation.y = Math.atan2(lnz*lside, -lnx*lside);
-    scene.add(arm);
+    trackGroup.add(arm);
     var lampX = lpx - lnx*lside*armLen;
     var lampZ = lpz - lnz*lside*armLen;
-    var globe = new THREE.Mesh(new THREE.SphereGeometry(0.46, 10, 7), lpGlowMat);
+    var globe = new THREE.Mesh(new THREE.SphereGeometry(0.46, 10, 7), lampGlowMat);
     globe.position.set(lampX, 8.8, lampZ);
-    scene.add(globe);
-    var halo = new THREE.Mesh(new THREE.SphereGeometry(1.3, 8, 6), lpHaloMat);
+    trackGroup.add(globe);
+    var halo = new THREE.Mesh(new THREE.SphereGeometry(1.3, 8, 6), lampHaloMat);
     halo.position.set(lampX, 8.8, lampZ);
-    scene.add(halo);
+    trackGroup.add(halo);
     var pl = new THREE.PointLight(0xffd070, 1.0, 28);
     pl.position.set(lampX, 8.3, lampZ);
-    scene.add(pl);
+    trackGroup.add(pl);
     lampPointLights.push(pl);
   }
-})();
+}
+buildLampPosts();
 
 // ─── BILLBOARDS ──────────────────────────────────────────────────────────────
 (function(){
@@ -1441,7 +1443,7 @@ buildBarriers();
     );
     bbMesh.position.set(bbx, 5, bbz);
     bbMesh.rotation.y = bbAng;
-    scene.add(bbMesh);
+    trackGroup.add(bbMesh);
 
     // Support poles
     var pMat = new THREE.MeshLambertMaterial({color:0x444444});
@@ -1452,7 +1454,7 @@ buildBarriers();
         3.5,
         bbz - Math.sin(bbAng)*ox
       );
-      scene.add(pole);
+      trackGroup.add(pole);
     });
   }
 
@@ -1480,7 +1482,7 @@ buildBarriers();
 })();
 
 // ─── MOTOR FEST GATE ─────────────────────────────────────────────────────────
-(function(){
+function buildGate(){
   var sp   = splinePts[0];
   var tan  = splineTans[0];
   var anx  = tan.z, anz = -tan.x;
@@ -1518,7 +1520,7 @@ buildBarriers();
 
   // ── LEFT PILLAR ───────────────────────────────────────────────────────────
   function buildPillar(side){
-    var g = new THREE.Group(); scene.add(g);
+    var g = new THREE.Group(); trackGroup.add(g);
     var pos = gPos(GW * side, 0, 0);
     g.position.copy(pos); g.rotation.y = yaw;
 
@@ -1561,21 +1563,18 @@ buildBarriers();
   // Main horizontal beam
   var beam = new THREE.Mesh(new THREE.BoxGeometry(beamW, 1.0, 1.0), steelMat);
   beam.position.copy(gPos(0, 14.0, 0)); beam.rotation.y = yaw;
-  scene.add(beam);
-  // Green accent beam front
+  trackGroup.add(beam);
   var beamF = new THREE.Mesh(new THREE.BoxGeometry(beamW, 1.2, 0.22), greenMat);
   beamF.position.copy(gPos(0, 14.0, 0.62)); beamF.rotation.y = yaw;
-  scene.add(beamF);
-  // Secondary lower beam
+  trackGroup.add(beamF);
   var beam2 = new THREE.Mesh(new THREE.BoxGeometry(beamW, 0.5, 0.5), steelMat);
   beam2.position.copy(gPos(0, 11.5, 0)); beam2.rotation.y = yaw;
-  scene.add(beam2);
-  // Diagonal braces (4 total)
+  trackGroup.add(beam2);
   [-GW*0.5, GW*0.5].forEach(function(lOff){
     var brace = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.2, 0.22), steelMat);
     var bp = gPos(lOff, 12.8, 0);
     brace.position.copy(bp); brace.rotation.y = yaw; brace.rotation.z = 0.38;
-    scene.add(brace);
+    trackGroup.add(brace);
   });
 
   // ── MAIN BANNER CANVAS ────────────────────────────────────────────────────
@@ -1642,7 +1641,7 @@ buildBarriers();
     new THREE.MeshBasicMaterial({map:bannerTex, side:THREE.DoubleSide})
   );
   bannerMesh.position.copy(gPos(0, 11.5, 0.90)); bannerMesh.rotation.y = yaw;
-  scene.add(bannerMesh);
+  trackGroup.add(bannerMesh);
 
   // ── HANGING FLAGS along the beam ─────────────────────────────────────────
   var flagCols = ['#00b84a','#ffcc00','#ffffff','#ff3300','#00b84a','#ffcc00'];
@@ -1661,11 +1660,10 @@ buildBarriers();
     );
     flag.position.copy(gPos(fLat, 13.1, 0.5));
     flag.rotation.y = yaw;
-    scene.add(flag);
-    // String (thin cylinder)
+    trackGroup.add(flag);
     var str=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,4), whiteMat);
     str.position.copy(gPos(fLat, 14.1, 0.5)); str.rotation.y = yaw;
-    scene.add(str);
+    trackGroup.add(str);
   }
 
   // ── GROUND STRIPE — start/finish line ────────────────────────────────────
@@ -1682,8 +1680,9 @@ buildBarriers();
     new THREE.MeshBasicMaterial({map:sfTex, side:THREE.DoubleSide, transparent:true, opacity:0.92})
   );
   sfLine.rotation.x=-Math.PI/2; sfLine.position.set(sp.x, 0.06, sp.z);
-  sfLine.rotation.z = yaw; scene.add(sfLine);
-})();
+  sfLine.rotation.z = yaw; trackGroup.add(sfLine);
+}
+buildGate();
 
 // ─── CAR ─────────────────────────────────────────────────────────────────────
 var carGroup = new THREE.Group();
@@ -2810,6 +2809,9 @@ function rebuildTrack(vIdx){
   buildStartFinishLine();
   buildKerbs();
   buildBarriers();
+  buildGrandstands();
+  buildLampPosts();
+  buildGate();
 
   // 4. Update car start position
   var sd0 = newCtrl[1].x - newCtrl[0].x;
