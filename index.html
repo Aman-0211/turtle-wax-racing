@@ -86,7 +86,7 @@ canvas{display:block;}
 .res-time-hero{position:relative;background:linear-gradient(135deg,rgba(80,0,160,.35),rgba(0,80,160,.25));border:1.5px solid rgba(150,80,255,.35);border-radius:18px;padding:20px 32px 18px;text-align:center;margin-bottom:14px;width:100%;box-shadow:0 0 40px rgba(120,60,255,.2);backdrop-filter:blur(4px);}
 .res-time-label{color:rgba(200,160,255,.6);font-size:10px;letter-spacing:3px;margin-bottom:6px;}
 .res-time-val{color:#fff;font-size:clamp(44px,13vw,76px);font-weight:900;letter-spacing:-2px;text-shadow:0 0 40px rgba(160,100,255,.9),0 0 16px #fff;line-height:1;font-variant-numeric:tabular-nums;}
-.res-rank-badge{position:absolute;top:-14px;right:14px;font-size:32px;filter:drop-shadow(0 0 10px rgba(255,200,0,.8));transform:scale(0);opacity:0;}
+.res-rank-badge{position:absolute;top:-14px;right:14px;font-size:32px;color:#fff;font-weight:900;filter:drop-shadow(0 0 10px rgba(255,200,0,.8));transform:scale(0);opacity:0;}
 .res-rank-badge.reveal{animation:rankBounceIn .55s cubic-bezier(.2,1.8,.35,1) .3s forwards;}
 @keyframes rankBounceIn{to{transform:scale(1);opacity:1;}}
 /* Rank-based time card glow */
@@ -118,28 +118,43 @@ canvas{display:block;}
 .btn-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;justify-content:center;}
 .btn-share{background:linear-gradient(135deg,#1da1f2,#0d6efd);color:#fff;}
 .btn-again{background:linear-gradient(135deg,#9b30ff,#5500cc);color:#fff;}
+.btn-home{background:linear-gradient(135deg,#00b84a,#007a30);color:#fff;}
 /* leaderboard */
-#res-lb{width:100%;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;}
-.res-lb-head{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(150,80,255,.08);}
-.res-lb-icon{font-size:18px;}
-.res-lb-title{color:#c070ff;font-size:11px;font-weight:900;letter-spacing:3px;}
-.res-lb-player{margin-left:auto;color:#555;font-size:9px;letter-spacing:1px;}
-.lb-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .2s;animation:lbSlide .3s ease-out both;}
+#res-lb{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.res-lb-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:2px solid rgba(150,80,255,.2);background:linear-gradient(135deg,rgba(150,80,255,.18),rgba(80,0,160,.12));}
+.res-lb-icon{font-size:22px;}
+.res-lb-title{color:#fff;font-size:13px;font-weight:900;letter-spacing:3px;}
+.res-lb-player{margin-left:auto;color:#999;font-size:10px;letter-spacing:1px;background:rgba(255,255,255,.07);padding:3px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.1);}
+.lb-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .2s;animation:lbSlide .35s ease-out both;}
 .lb-row:last-child{border-bottom:none;}
-@keyframes lbSlide{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+@keyframes lbSlide{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}
 .lb-row:nth-child(1){animation-delay:.05s;}
-.lb-row:nth-child(2){animation-delay:.10s;}
-.lb-row:nth-child(3){animation-delay:.15s;}
-.lb-row:nth-child(4){animation-delay:.20s;}
-.lb-row:nth-child(5){animation-delay:.25s;}
-.lb-current{background:rgba(0,184,74,.08);border-left:3px solid #00b84a;}
-.lb-rank{font-size:18px;width:28px;flex-shrink:0;text-align:center;color:#fff;}
-.lb-name{flex:1;color:#ccc;font-size:11px;letter-spacing:1px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.lb-time{color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;}
-.lb-pts{color:#555;font-size:10px;width:44px;text-align:right;flex-shrink:0;}
-.lb-pname{display:block;color:#ccc;font-size:11px;letter-spacing:1px;font-weight:700;}
-.lb-car{display:block;color:#444;font-size:9px;letter-spacing:1px;}
-.lb-empty{color:#444;font-size:12px;text-align:center;padding:18px;}
+.lb-row:nth-child(2){animation-delay:.12s;}
+.lb-row:nth-child(3){animation-delay:.19s;}
+.lb-row:nth-child(4){animation-delay:.26s;}
+.lb-row:nth-child(5){animation-delay:.33s;}
+/* top 3 row highlights */
+.lb-top1{background:linear-gradient(90deg,rgba(255,200,0,.1),transparent);}
+.lb-top2{background:linear-gradient(90deg,rgba(192,192,210,.07),transparent);}
+.lb-top3{background:linear-gradient(90deg,rgba(200,120,50,.07),transparent);}
+.lb-top1 .lb-rank{color:#ffd700;text-shadow:0 0 12px #ffd700aa;font-size:22px;}
+.lb-top2 .lb-rank{color:#c0c0d2;text-shadow:0 0 8px #c0c0d266;font-size:22px;}
+.lb-top3 .lb-rank{color:#cd7f32;text-shadow:0 0 8px #cd7f3266;font-size:22px;}
+.lb-top1 .lb-time{color:#ffd700;}
+.lb-top2 .lb-time{color:#d8d8e8;}
+.lb-top3 .lb-time{color:#cd9f62;}
+/* current player row */
+.lb-current{border-left:3px solid #00b84a;background:linear-gradient(90deg,rgba(0,184,74,.14),transparent)!important;}
+.lb-you{display:inline-block;background:#00b84a;color:#000;font-size:8px;font-weight:900;letter-spacing:1px;border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:middle;}
+.lb-rank{font-size:15px;width:34px;flex-shrink:0;text-align:center;color:#555;font-weight:900;font-variant-numeric:tabular-nums;}
+.lb-name{flex:1;min-width:0;overflow:hidden;}
+.lb-pname{display:block;color:#ddd;font-size:12px;letter-spacing:1px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-car{display:block;color:#888;font-size:9px;letter-spacing:1px;margin-top:2px;}
+.lb-time{color:#aaa;font-size:15px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;}
+.lb-pts{color:#666;font-size:10px;width:52px;text-align:right;flex-shrink:0;line-height:1.4;}
+.lb-pts-val{display:block;color:#888;font-size:12px;font-weight:700;}
+.lb-pts-lbl{display:block;color:#555;font-size:8px;letter-spacing:1px;}
+.lb-empty{color:#555;font-size:12px;text-align:center;padding:28px;letter-spacing:1px;}
 /* ── TILT UI ── */
 #tilt-ui{display:none!important;}
 #countdown{position:fixed;top:0;left:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;z-index:200;pointer-events:none;}
@@ -209,9 +224,13 @@ canvas{display:block;}
 .grg-cta{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:5px 12px 14px;flex-shrink:0;width:100%;gap:8px;}
 .grg-pus{display:flex;flex-direction:column;gap:2px;}
 .grg-pu{font-size:9px;letter-spacing:.5px;font-weight:700;}
+.grg-cta-btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;}
 .grg-go{padding:13px 26px;border-radius:40px;border:none;cursor:pointer;font-size:clamp(13px,3.5vw,17px);font-weight:900;letter-spacing:2px;color:#fff;background:linear-gradient(135deg,var(--tc,#00b84a),#007030);box-shadow:0 0 26px var(--tc,#00b84a88);pointer-events:all;flex-shrink:0;text-shadow:0 1px 4px #0008;transition:background .5s,box-shadow .5s,transform .15s;}
 .grg-go:hover{transform:scale(1.07);}
 .grg-go:active{transform:scale(0.95);}
+.grg-lb-btn{padding:13px 20px;border-radius:40px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:clamp(11px,3vw,14px);font-weight:900;letter-spacing:2px;color:#ccc;background:rgba(255,255,255,.07);pointer-events:all;flex-shrink:0;transition:background .2s,transform .15s,border-color .2s;}
+.grg-lb-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);transform:scale(1.05);}
+.grg-lb-btn:active{transform:scale(0.95);}
 
 /* top bar centre */
 .grg-bar-mid{display:flex;flex-direction:column;align-items:center;gap:3px;}
@@ -579,7 +598,10 @@ canvas{display:block;}
     </div>
     <div class="grg-start-wrap">
       <div class="grg-race-info">CIRCUIT RACE &nbsp;&#x2022;&nbsp; 4 LAPS</div>
-      <button class="grg-go" id="start-btn">&#x26A1;&nbsp;START RACE</button>
+      <div class="grg-cta-btns">
+        <button class="grg-go" id="start-btn">&#x26A1;&nbsp;START RACE</button>
+        <button class="grg-lb-btn" id="dash-lb-btn">&#x1F3C6;&nbsp;LEADERBOARD</button>
+      </div>
     </div>
   </div>
 </div>
@@ -614,6 +636,10 @@ canvas{display:block;}
         <div class="res-stat-lbl">LAPS</div>
         <div class="res-stat-val">4 / 4</div>
       </div>
+      <div class="res-stat-box">
+        <div class="res-stat-lbl">CAR</div>
+        <div class="res-stat-val" id="res-car-name" style="font-size:13px;">—</div>
+      </div>
     </div>
     <div class="res-msg-txt" id="res-msg">Keep practising!</div>
     <!-- Save prompt (shown only for guests) -->
@@ -625,6 +651,7 @@ canvas{display:block;}
     <div class="btn-row">
       <button class="btn btn-share" id="share-btn">&#x1F4E4;&nbsp;SHARE</button>
       <button class="btn btn-again" id="again-btn">&#x26A1;&nbsp;RACE AGAIN</button>
+      <button class="btn btn-home" id="home-btn">&#x1F3E0;&nbsp;GARAGE</button>
     </div>
     <!-- Leaderboard -->
     <div id="res-lb">
@@ -1230,21 +1257,21 @@ buildKerbs();
 buildBarriers();
 
 // ─── TREES ───────────────────────────────────────────────────────────────────
-(function(){
-  treeTrunkMat = new THREE.MeshLambertMaterial({color:0x3a2008});
-  var trunkMat = treeTrunkMat;
+function buildTrees(){
+  treefoliageMats = [];
   var foliageCols = [0x0e3808, 0x162c0a, 0x1c3810];
+  treeTrunkMat = new THREE.MeshLambertMaterial({color:0x3a2008});
   var dummy = new THREE.Object3D();
   var trunkGeo  = new THREE.CylinderGeometry(0.22, 0.32, 3.2, 7);
-  var trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, TREE_N);
-  scene.add(trunkInst);
+  var trunkInst = new THREE.InstancedMesh(trunkGeo, treeTrunkMat, TREE_N);
+  trackGroup.add(trunkInst);
   var perGroup = Math.ceil(TREE_N / foliageCols.length);
   for(var fi=0; fi<foliageCols.length; fi++){
     var fMat  = new THREE.MeshLambertMaterial({color:foliageCols[fi]});
     treefoliageMats.push(fMat);
     var fGeo  = new THREE.ConeGeometry(2.4 - fi*0.3, 4.0 + fi*1.2, 7);
     var fInst = new THREE.InstancedMesh(fGeo, fMat, perGroup);
-    scene.add(fInst);
+    trackGroup.add(fInst);
     for(var i=0; i<perGroup; i++){
       var ti = fi*perGroup + i;
       if(ti >= TREE_N) break;
@@ -1253,7 +1280,7 @@ buildBarriers();
       var tan = splineTans[seg];
       var tnx = tan.z, tnz = -tan.x;
       var tside = (ti % 2 === 0) ? 1 : -1;
-      var dist = ROAD_HW + 3.5 + Math.random()*14.5;
+      var dist = ROAD_HW + 5 + Math.random()*14;
       var tx = sp.x + tnx*dist*tside + Math.random()*2 - 1;
       var tz = sp.z + tnz*dist*tside + Math.random()*2 - 1;
       dummy.position.set(tx, 1.6, tz);
@@ -1274,14 +1301,14 @@ buildBarriers();
   bushMat = new THREE.MeshLambertMaterial({color:0x1e3c0c});
   var bushGeo  = new THREE.SphereGeometry(1.2, 6, 5);
   var bushInst = new THREE.InstancedMesh(bushGeo, bushMat, BUSH_N);
-  scene.add(bushInst);
+  trackGroup.add(bushInst);
   for(var bi=0; bi<BUSH_N; bi++){
     var bseg = (bi*3) % ROAD_SEG;
     var bsp  = splinePts[bseg];
     var btan = splineTans[bseg];
     var bnx  = btan.z, bnz = -btan.x;
     var bside = (bi % 2 === 0) ? 1 : -1;
-    var bdist = ROAD_HW + 2.8 + Math.random()*6;
+    var bdist = ROAD_HW + 4 + Math.random()*6;
     dummy.position.set(bsp.x + bnx*bdist*bside, 0.8, bsp.z + bnz*bdist*bside);
     dummy.rotation.set(0, Math.random()*Math.PI*2, 0);
     dummy.scale.set(0.7+Math.random()*0.8, 0.5+Math.random()*0.5, 0.7+Math.random()*0.8);
@@ -1289,7 +1316,8 @@ buildBarriers();
     bushInst.setMatrixAt(bi, dummy.matrix);
   }
   bushInst.instanceMatrix.needsUpdate = true;
-})();
+}
+buildTrees();
 
 // ─── GRANDSTANDS ─────────────────────────────────────────────────────────────
 function buildGrandstands(){
@@ -1367,76 +1395,65 @@ function buildLampPosts(){
 buildLampPosts();
 
 // ─── BILLBOARDS ──────────────────────────────────────────────────────────────
-(function(){
-  var W=1024, H=512;
-  var loader = new THREE.TextureLoader();
-  var PRODUCT_IMGS = ['images/p1.png','images/p2.png'];
+var _bbLoaded = [null, null];
+var _bbTexReady = false;
+var _BB_W = 1024, _BB_H = 512;
+var _bbLabels = ['SHINE LIKE NEW ✨','#RoadTripUnited2026 🏎'];
 
-  // Draw a branded frame over the product image canvas
-  function drawFrame(ctx, W, H, label){
-    // Green top bar
-    ctx.fillStyle='#00b84a';
-    ctx.fillRect(0, 0, W, H*0.10);
-    // Bottom bar
-    ctx.fillStyle='#003820';
-    ctx.fillRect(0, H*0.88, W, H*0.12);
-    // Turtle Wax logo text top-left
-    ctx.font='bold '+Math.floor(H*0.075)+'px Arial Black';
-    ctx.fillStyle='#ffffff';
-    ctx.textAlign='left';
-    ctx.fillText('🐢 TURTLE WAX', W*0.03, H*0.075);
-    // Bottom label
-    ctx.font='bold '+Math.floor(H*0.072)+'px Arial Black';
-    ctx.fillStyle='#ffcc00';
-    ctx.textAlign='center';
-    ctx.fillText(label, W/2, H*0.965);
-    // Green border outline
-    ctx.strokeStyle='#00b84a';
-    ctx.lineWidth=8;
-    ctx.strokeRect(4, 4, W-8, H-8);
-  }
+function _bbDrawFrame(ctx, W, H, label){
+  ctx.fillStyle='#00b84a';
+  ctx.fillRect(0, 0, W, H*0.10);
+  ctx.fillStyle='#003820';
+  ctx.fillRect(0, H*0.88, W, H*0.12);
+  ctx.font='bold '+Math.floor(H*0.075)+'px Arial Black';
+  ctx.fillStyle='#ffffff';
+  ctx.textAlign='left';
+  ctx.fillText('🐢 TURTLE WAX', W*0.03, H*0.075);
+  ctx.font='bold '+Math.floor(H*0.072)+'px Arial Black';
+  ctx.fillStyle='#ffcc00';
+  ctx.textAlign='center';
+  ctx.fillText(label, W/2, H*0.965);
+  ctx.strokeStyle='#00b84a';
+  ctx.lineWidth=8;
+  ctx.strokeRect(4, 4, W-8, H-8);
+}
 
-  // Fallback canvas design if image fails
-  function drawFallback(ctx, W, H, idx){
-    var bg = idx===0 ? '#003820' : '#001a30';
-    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
-    drawFrame(ctx, W, H, idx===0 ? 'SHINE LIKE NEW' : '#RoadTripUnited2026');
-    ctx.font='bold '+Math.floor(H*0.22)+'px Arial Black';
-    ctx.fillStyle='#00b84a'; ctx.textAlign='center';
-    ctx.fillText('TURTLE WAX', W/2, H*0.60);
-  }
-
-  var labels = ['SHINE LIKE NEW ✨','#RoadTripUnited2026 🏎'];
-
-  function spawnBillboard(b, tex){
+function buildBillboards(){
+  if(!_bbTexReady) return;
+  var W = _BB_W, H = _BB_H;
+  for(var b=0; b<12; b++){
     var bt   = b / 12;
     var bpt  = trackCurve.getPoint(bt);
     var btan = trackCurve.getTangent(bt);
     var bnx  = btan.z, bnz = -btan.x;
     var bside= (b % 2 === 0) ? 1 : -1;
-    var BDIST= ROAD_HW + 6 + Math.random()*3;
+    var BDIST= ROAD_HW + 9;
     var bbx  = bpt.x + bnx*BDIST*bside;
     var bbz  = bpt.z + bnz*BDIST*bside;
     var bbAng= Math.atan2(bnx*bside, bnz*bside);
 
-    // If we have a real image texture, draw frame on top via canvas
+    var tex = _bbLoaded[b % _bbLoaded.length];
     var finalTex;
     if(tex){
       var bbc = document.createElement('canvas');
       bbc.width=W; bbc.height=H;
       var bctx=bbc.getContext('2d');
-      // Draw product image scaled to fill
       bctx.drawImage(tex.image, 0, H*0.10, W, H*0.78);
-      drawFrame(bctx, W, H, labels[b % labels.length]);
+      _bbDrawFrame(bctx, W, H, _bbLabels[b % _bbLabels.length]);
       finalTex = new THREE.CanvasTexture(bbc);
     } else {
       var bbc2 = document.createElement('canvas');
       bbc2.width=W; bbc2.height=H;
-      drawFallback(bbc2.getContext('2d'), W, H, b % PRODUCT_IMGS.length);
+      var bctx2 = bbc2.getContext('2d');
+      bctx2.fillStyle = (b % 2 === 0) ? '#003820' : '#001a30';
+      bctx2.fillRect(0,0,W,H);
+      _bbDrawFrame(bctx2, W, H, _bbLabels[b % _bbLabels.length]);
+      bctx2.font='bold '+Math.floor(H*0.22)+'px Arial Black';
+      bctx2.fillStyle='#00b84a'; bctx2.textAlign='center';
+      bctx2.fillText('TURTLE WAX', W/2, H*0.60);
       finalTex = new THREE.CanvasTexture(bbc2);
     }
 
-    // Bigger board: 12 wide × 6 tall
     var bbMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(12, 6),
       new THREE.MeshBasicMaterial({map:finalTex, side:THREE.DoubleSide})
@@ -1445,7 +1462,6 @@ buildLampPosts();
     bbMesh.rotation.y = bbAng;
     trackGroup.add(bbMesh);
 
-    // Support poles
     var pMat = new THREE.MeshLambertMaterial({color:0x444444});
     [-4.5, 4.5].forEach(function(ox){
       var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.18,7,8), pMat);
@@ -1457,26 +1473,20 @@ buildLampPosts();
       trackGroup.add(pole);
     });
   }
+}
 
-  // Load both images, distribute across 12 billboards
-  var loaded = [null, null];
-  function trySpawn(){
-    for(var b=0; b<12; b++){
-      var imgIdx = b % PRODUCT_IMGS.length;
-      spawnBillboard(b, loaded[imgIdx]);
-    }
-  }
-
+(function(){
+  var loader = new THREE.TextureLoader();
+  var PRODUCT_IMGS = ['images/p1.png','images/p2.png'];
   var remaining = PRODUCT_IMGS.length;
   PRODUCT_IMGS.forEach(function(src, idx){
     loader.load(src, function(tex){
-      loaded[idx] = tex;
+      _bbLoaded[idx] = tex;
       remaining--;
-      if(remaining === 0) trySpawn();
+      if(remaining === 0){ _bbTexReady = true; buildBillboards(); }
     }, undefined, function(){
-      // Image failed — spawn with fallback
       remaining--;
-      if(remaining === 0) trySpawn();
+      if(remaining === 0){ _bbTexReady = true; buildBillboards(); }
     });
   });
 })();
@@ -2605,7 +2615,7 @@ function buildObstacles(obstacleTypes){
     var sp  = splinePts[idx];
     var tn  = splineTans[idx];
     var side   = (ci % 2 === 0) ? 1 : -1;
-    var latOff = side * (5 + Math.random() * 4);
+    var latOff = side * (ROAD_HW * 0.65 + Math.random() * (ROAD_HW * 0.25));
     var cx = sp.x - tn.z * latOff;
     var cz = sp.z + tn.x * latOff;
     var type = obstacleTypes[ci % obstacleTypes.length];
@@ -2812,6 +2822,8 @@ function rebuildTrack(vIdx){
   buildGrandstands();
   buildLampPosts();
   buildGate();
+  buildTrees();
+  buildBillboards();
 
   // 4. Update car start position
   var sd0 = newCtrl[1].x - newCtrl[0].x;
@@ -2896,6 +2908,7 @@ var boostActive = false, boostT = 0, BOOST_DUR = 5.0;
 var boostWasReady = false;
 var lastT = 0, lastSecond = 0;
 var prevLapSign = 0;
+var _lapHalfDone = false; // must pass halfway mark before lap can count
 
 function applyShine(){
   var s = Math.min(G.shine, 1);
@@ -3698,16 +3711,21 @@ function addRaceResult(timeSecs, score, vehicleIdx){
 }
 function renderLB(el, currentT){
   var lb = getLB();
-  if(!lb.length){ el.innerHTML = '<div class="lb-empty">No races finished yet</div>'; return; }
+  if(!lb.length){ el.innerHTML = '<div class="lb-empty">No races yet — be the first! 🏁</div>'; return; }
   var medals = ['🥇','🥈','🥉'];
+  var topCls  = ['lb-top1','lb-top2','lb-top3'];
   el.innerHTML = lb.map(function(e, i){
     var isCurrent = (currentT !== undefined && Math.abs(e.t - Math.round(currentT*10)/10) < 0.05);
-    return '<div class="lb-row'+(isCurrent?' lb-current':'')+'">'
-      + '<span class="lb-rank">'+(medals[i] || (i+1)+'.')+'</span>'
-      + '<span class="lb-name"><span class="lb-pname">'+(e.v || 'GUEST')+'</span>'
-          + (e.car ? '<span class="lb-car"> '+e.car+'</span>' : '')+'</span>'
+    var rankDisp = medals[i] || ('#'+(i+1));
+    var rowCls = 'lb-row' + (topCls[i] ? ' '+topCls[i] : '') + (isCurrent ? ' lb-current' : '');
+    return '<div class="'+rowCls+'">'
+      + '<span class="lb-rank">'+rankDisp+'</span>'
+      + '<span class="lb-name">'
+      +   '<span class="lb-pname">'+(e.v || 'GUEST')+(isCurrent ? '<span class="lb-you">YOU</span>' : '')+'</span>'
+      +   (e.car ? '<span class="lb-car">🏎 '+e.car+'</span>' : '')
+      + '</span>'
       + '<span class="lb-time">'+fmtTimeMs(e.t)+'</span>'
-      + '<span class="lb-pts">'+e.s+'</span>'
+      + '<span class="lb-pts"><span class="lb-pts-val">'+e.s+'</span><span class="lb-pts-lbl">PTS</span></span>'
       + '</div>';
   }).join('');
 }
@@ -3736,6 +3754,7 @@ function startGame(){
   carX = splinePts[0].x + _startDx * 5;
   carZ = splinePts[0].z + _startDz * 5;
   prevLapSign = 0;
+  _lapHalfDone = false;
   resetAtmosphere();
   // Reset wrecked cars to original positions
   for(var ci=0; ci<cones.length; ci++){
@@ -3829,10 +3848,19 @@ function endGame(){
   document.getElementById('boost-hud').style.display = 'none';
   document.getElementById('wrongway').style.display = 'none';
   boostActive = false;
+  // Restore any elements hidden by the dashboard leaderboard view
+  ['res-trophy','res-time-hero','res-stats-row','res-msg'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=''; });
+  document.querySelector('.res-header .res-flag').textContent = '🏁';
+  document.querySelector('.res-header .res-title').textContent = 'RACE COMPLETE';
+  document.getElementById('again-btn').style.display = '';
+  document.getElementById('share-btn').style.display = '';
   var finalTime = G.time;
   // Start with 0:00 — animated counter will fill it in
   document.getElementById('res-time').textContent = '0:00.0';
   document.getElementById('res-score').textContent = G.score + ' pts';
+  var veh = VEHICLES[selectedVehicle] || VEHICLES[0];
+  document.getElementById('res-car-name').textContent = veh.name;
+  document.getElementById('res-car-name').style.color = veh.color;
   var msg = G.score>800 ? 'LEGENDARY SHINE!' : G.score>500 ? 'BRILLIANT FINISH!' : G.score>250 ? 'GREAT RACING!' : 'Keep practising!';
   document.getElementById('res-msg').textContent = msg;
   addRaceResult(finalTime, G.score, selectedVehicle);
@@ -3931,6 +3959,24 @@ window.addEventListener('resize', function(){
 
 document.getElementById('start-btn').addEventListener('click', function(){ startGame(); });
 document.getElementById('again-btn').addEventListener('click', function(){ startGame(); });
+document.getElementById('home-btn').addEventListener('click', function(){
+  document.getElementById('result').style.display  = 'none';
+  document.getElementById('attract').style.display = 'flex';
+  G.state = 'attract';
+});
+document.getElementById('dash-lb-btn').addEventListener('click', function(){
+  // Show result screen as leaderboard-only view (hide race-specific elements)
+  var hideIds = ['res-trophy','res-victory-lbl','res-time-hero','res-stats-row','res-msg','res-save-prompt','res-flash'];
+  hideIds.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.querySelector('.res-header .res-flag').textContent = '🏆';
+  document.querySelector('.res-header .res-title').textContent = 'LEADERBOARD';
+  document.getElementById('again-btn').style.display = 'none';
+  document.getElementById('share-btn').style.display = 'none';
+  renderLB(document.getElementById('res-lb-list'), undefined);
+  document.getElementById('attract').style.display = 'none';
+  document.getElementById('result').style.display  = 'flex';
+  G.state = 'result';
+});
 document.getElementById('res-save-btn').addEventListener('click', function(){
   // Open auth from result screen — after sign-in, re-save the result with new name
   var _savedTime = G.time, _savedScore = G.score, _savedVeh = selectedVehicle;
@@ -4343,11 +4389,16 @@ function animate(ts){
     var isWrongWay = (wwDot < -0.45) && (Math.abs(carSpeed) > 1.5);
     document.getElementById('wrongway').style.display = isWrongWay ? 'block' : 'none';
 
-    // Lap detection
+    // Lap detection — require car to pass halfway mark first to prevent reverse exploit
     var startPt  = splinePts[0];
     var startTan = splineTans[0];
     var proj = (carX - startPt.x)*startTan.x + (carZ - startPt.z)*startTan.z;
-    if(prevLapSign < 0 && proj >= 0){
+    // Mark halfway done when nearI passes 40–60% of track (forward direction only)
+    if(!_lapHalfDone && nearI > N_PTS * 0.4 && nearI < N_PTS * 0.75 && wwDot > 0){
+      _lapHalfDone = true;
+    }
+    if(prevLapSign < 0 && proj >= 0 && _lapHalfDone){
+      _lapHalfDone = false;
       G.laps++;
       document.getElementById('hud-laps').textContent = G.laps + ' / ' + TOTAL_LAPS;
       if(G.laps >= TOTAL_LAPS){
