@@ -752,6 +752,14 @@ for(var _si=0; _si<=ROAD_SEG; _si++){
 }
 var N_PTS = splinePts.length;
 
+var trackGroup = new THREE.Group();
+scene.add(trackGroup);
+var currentBuiltTrack = -1;
+// Expose recolorable materials (set by IIFEs below)
+var groundMat, groundPatchMats = [];
+var treeTrunkMat, treefoliageMats = [], bushMat;
+var lampGlowMat, lampHaloMat, lampPointLights = [];
+
 // ─── RENDERER ────────────────────────────────────────────────────────────────
 var renderer = new THREE.WebGLRenderer({
   canvas: document.getElementById('gc'),
@@ -968,7 +976,8 @@ var sunBillboards = [];
     }
   }
   gGeo.computeVertexNormals();
-  var gMesh = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({color:0x7a5018}));
+  groundMat = new THREE.MeshLambertMaterial({color:0x7a5018});
+  var gMesh = new THREE.Mesh(gGeo, groundMat);
   gMesh.receiveShadow = true;
   scene.add(gMesh);
 
@@ -977,9 +986,11 @@ var sunBillboards = [];
     var pa = Math.random() * Math.PI * 2;
     var pr = 30 + Math.random() * 200;
     var ps = 6 + Math.random() * 14;
+    var pMat = new THREE.MeshLambertMaterial({color: patchColors[pi % patchColors.length]});
+    groundPatchMats.push(pMat);
     var pm = new THREE.Mesh(
       new THREE.CircleGeometry(ps, 7),
-      new THREE.MeshLambertMaterial({color: patchColors[pi % patchColors.length]})
+      pMat
     );
     pm.rotation.x = -Math.PI / 2;
     pm.position.set(Math.cos(pa) * pr, 0.02, Math.sin(pa) * pr);
@@ -1060,7 +1071,7 @@ function buildRibbon(lateralOff, halfW, yLevel, color, opacity, emissive, matOve
   }
   var mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
-  scene.add(mesh);
+  trackGroup.add(mesh);
   return mesh;
 }
 
@@ -1095,7 +1106,7 @@ function buildCentreMarks(){
     geo.computeVertexNormals();
     var mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({color:0xffee00, emissive:new THREE.Color(0x554400)}));
     mesh.receiveShadow = true;
-    scene.add(mesh);
+    trackGroup.add(mesh);
   }
 }
 
@@ -1128,7 +1139,7 @@ function buildStartFinishLine(){
   geo.setAttribute('uv',       new THREE.BufferAttribute(uvArr, 2));
   geo.setIndex(idxArr);
   geo.computeVertexNormals();
-  scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:tex, depthWrite:true})));
+  trackGroup.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:tex, depthWrite:true})));
 }
 
 function buildKerbs(){
@@ -1139,7 +1150,7 @@ function buildKerbs(){
   var TOTAL  = ROAD_SEG * 2;
   var redInst = new THREE.InstancedMesh(kGeo, redMat, TOTAL);
   var whtInst = new THREE.InstancedMesh(kGeo, whtMat, TOTAL);
-  scene.add(redInst); scene.add(whtInst);
+  trackGroup.add(redInst); trackGroup.add(whtInst);
   var kDummy = new THREE.Object3D();
   var ri = 0, wi = 0;
   for(var i=0; i<ROAD_SEG; i++){
@@ -1176,7 +1187,7 @@ function buildBarriers(){
   var barInst  = new THREE.InstancedMesh(new THREE.BoxGeometry(panW, panH, panD), barMat, TOTAL);
   var ribInst  = new THREE.InstancedMesh(new THREE.BoxGeometry(panW, 0.12, 0.14), ribMat, TOTAL);
   var postInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.10, 1.1, 6), postMat, TOTAL);
-  scene.add(barInst); scene.add(ribInst); scene.add(postInst);
+  trackGroup.add(barInst); trackGroup.add(ribInst); trackGroup.add(postInst);
   var bDummy = new THREE.Object3D();
   var bi = 0;
   for(var i=0; i<ROAD_SEG; i++){
@@ -1219,7 +1230,8 @@ buildBarriers();
 
 // ─── TREES ───────────────────────────────────────────────────────────────────
 (function(){
-  var trunkMat = new THREE.MeshLambertMaterial({color:0x3a2008});
+  treeTrunkMat = new THREE.MeshLambertMaterial({color:0x3a2008});
+  var trunkMat = treeTrunkMat;
   var foliageCols = [0x0e3808, 0x162c0a, 0x1c3810];
   var dummy = new THREE.Object3D();
   var trunkGeo  = new THREE.CylinderGeometry(0.22, 0.32, 3.2, 7);
@@ -1228,6 +1240,7 @@ buildBarriers();
   var perGroup = Math.ceil(TREE_N / foliageCols.length);
   for(var fi=0; fi<foliageCols.length; fi++){
     var fMat  = new THREE.MeshLambertMaterial({color:foliageCols[fi]});
+    treefoliageMats.push(fMat);
     var fGeo  = new THREE.ConeGeometry(2.4 - fi*0.3, 4.0 + fi*1.2, 7);
     var fInst = new THREE.InstancedMesh(fGeo, fMat, perGroup);
     scene.add(fInst);
@@ -1257,7 +1270,7 @@ buildBarriers();
   }
   trunkInst.instanceMatrix.needsUpdate = true;
 
-  var bushMat  = new THREE.MeshLambertMaterial({color:0x1e3c0c});
+  bushMat = new THREE.MeshLambertMaterial({color:0x1e3c0c});
   var bushGeo  = new THREE.SphereGeometry(1.2, 6, 5);
   var bushInst = new THREE.InstancedMesh(bushGeo, bushMat, BUSH_N);
   scene.add(bushInst);
@@ -1313,8 +1326,10 @@ buildBarriers();
 // ─── LAMP POSTS ──────────────────────────────────────────────────────────────
 (function(){
   var lpPostMat = new THREE.MeshLambertMaterial({color:0x909090});
-  var lpGlowMat = new THREE.MeshStandardMaterial({color:0xffd080, emissive:new THREE.Color(0xffc060), emissiveIntensity:5.0});
-  var lpHaloMat = new THREE.MeshBasicMaterial({color:0xffaa30, transparent:true, opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false});
+  lampGlowMat = new THREE.MeshStandardMaterial({color:0xffd080, emissive:new THREE.Color(0xffc060), emissiveIntensity:5.0});
+  lampHaloMat = new THREE.MeshBasicMaterial({color:0xffaa30, transparent:true, opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false});
+  var lpGlowMat = lampGlowMat;
+  var lpHaloMat = lampHaloMat;
   var LAMP_STEP = 9;
   for(var i=0; i<N_PTS; i+=LAMP_STEP){
     var sp  = splinePts[i];
@@ -1345,6 +1360,7 @@ buildBarriers();
     var pl = new THREE.PointLight(0xffd070, 1.0, 28);
     pl.position.set(lampX, 8.3, lampZ);
     scene.add(pl);
+    lampPointLights.push(pl);
   }
 })();
 
@@ -2291,7 +2307,15 @@ function makePickup(idx){
   scene.add(g);
   return {group:g, pos:new THREE.Vector3(px, 1.2, pz), pd:pd, alive:true, respawnT:0};
 }
-for(var pi2=0; pi2<PICKUP_N; pi2++) pickups.push(makePickup(pi2));
+function buildPickups(){
+  for(var ri=0; ri<pickups.length; ri++){
+    scene.remove(pickups[ri].group);
+    pickups[ri].group.children.forEach(function(c){ if(c.geometry) c.geometry.dispose(); if(c.material) c.material.dispose(); });
+  }
+  pickups = [];
+  for(var pi2=0; pi2<PICKUP_N; pi2++) pickups.push(makePickup(pi2));
+}
+buildPickups();
 
 // ─── PARTICLES ───────────────────────────────────────────────────────────────
 var sparkleGeo = new THREE.BufferGeometry();
@@ -2571,8 +2595,11 @@ var OBSTACLE_TYPES = ['wreck','wreck','wreck','wreck','barrel','barrel','barrel'
 // Shuffle
 (function(){ for(var i=OBSTACLE_TYPES.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=OBSTACLE_TYPES[i]; OBSTACLE_TYPES[i]=OBSTACLE_TYPES[j]; OBSTACLE_TYPES[j]=t; } })();
 
-var cones = []; // named "cones" to reuse existing collision/respawn code
-(function(){
+var cones = [];
+function buildObstacles(obstacleTypes){
+  // Remove old cones from scene
+  for(var oi2=0; oi2<cones.length; oi2++){ scene.remove(cones[oi2].grp); }
+  cones = [];
   var step = Math.floor(ROAD_SEG / 12);
   for(var ci=0; ci<12; ci++){
     var idx = ((ci * step) + 10) % ROAD_SEG;
@@ -2582,7 +2609,7 @@ var cones = []; // named "cones" to reuse existing collision/respawn code
     var latOff = side * (5 + Math.random() * 4);
     var cx = sp.x - tn.z * latOff;
     var cz = sp.z + tn.x * latOff;
-    var type = OBSTACLE_TYPES[ci];
+    var type = obstacleTypes[ci % obstacleTypes.length];
     var built;
     if(type === 'barrel'){
       built = buildBarrels();
@@ -2600,12 +2627,19 @@ var cones = []; // named "cones" to reuse existing collision/respawn code
     scene.add(built.grp);
     cones.push({grp:built.grp, ox:cx, oz:cz, alive:true, respawnT:0, col:built.col, type:type});
   }
-})();
+}
+buildObstacles(OBSTACLE_TYPES);
 
 // Oil slicks — drive over one and your steering goes haywire for 2 seconds
 var oilSlicks = [];
 var oilT = 0; // active oil skid timer
-(function(){
+function buildOilSlicks(){
+  for(var oi3=0; oi3<oilSlicks.length; oi3++){
+    scene.remove(oilSlicks[oi3].mesh);
+    oilSlicks[oi3].mesh.geometry.dispose();
+    oilSlicks[oi3].mesh.material.dispose();
+  }
+  oilSlicks = [];
   var oilGeo = new THREE.CircleGeometry(3.8, 18);
   var oilMat = new THREE.MeshLambertMaterial({color:0x0a1a18, transparent:true, opacity:0.88});
   var step = Math.floor(ROAD_SEG / 6);
@@ -2623,7 +2657,224 @@ var oilT = 0; // active oil skid timer
     scene.add(mesh);
     oilSlicks.push({mesh:mesh, ox:ox, oz:oz});
   }
-})();
+}
+buildOilSlicks();
+
+// ─── TRACK CONFIGURATIONS ────────────────────────────────────────────────────
+var TRACK_CONFIGS = [
+  // 0: SONIC GT — NEON CITY CIRCUIT
+  {
+    spline: [
+      new THREE.Vector3(  0,0, 65), new THREE.Vector3( 28,0, 60),
+      new THREE.Vector3( 55,0, 42), new THREE.Vector3( 65,0, 15),
+      new THREE.Vector3( 60,0,-10), new THREE.Vector3( 72,0,-32),
+      new THREE.Vector3( 65,0,-58), new THREE.Vector3( 35,0,-72),
+      new THREE.Vector3(  5,0,-68), new THREE.Vector3(-22,0,-50),
+      new THREE.Vector3(-15,0,-25), new THREE.Vector3(-42,0,-10),
+      new THREE.Vector3(-65,0, 10), new THREE.Vector3(-65,0, 40),
+      new THREE.Vector3(-35,0, 58), new THREE.Vector3( -8,0, 65),
+    ],
+    obstacles: ['barrier','barrier','barrel','tyre','barrel','barrier','tyre','barrel','barrier','barrier','tyre','barrel'],
+    groundColor: 0x0d0d1a,
+    groundPatches: [0x050510, 0x0a0a20, 0x080818, 0x0d0d25, 0x060614],
+    trunkColor: 0x1a1a2a,
+    foliageColors: [0x0a1a2a, 0x051522, 0x0a2030],
+    bushColor: 0x051018,
+    lampColor: 0x00ffdd, lampHalo: 0x00ffbb, lampLight: 0x00ffcc,
+    shoulderColor: 0x050510,
+    lapMsgs: ['LAP 2 — DEEPER NIGHT 🌃','LAP 3 — NEON STORM ⚡','LAP 4 — HYPERDRIVE 🚀'],
+    lapAtmos: [
+      {fogColor:0x08003a,fogDens:0.018,hemiSky:0x200050,hemiGnd:0x040010,sunCol:0x4400cc,sunInt:0.8,fillCol:0x00ffcc,fillInt:0.6,skyTop:0x000010,skyMid:0x0a0030,skyBot:0x050020},
+      {fogColor:0x040022,fogDens:0.022,hemiSky:0x180040,hemiGnd:0x020008,sunCol:0x2200aa,sunInt:0.5,fillCol:0x00ccff,fillInt:0.8,skyTop:0x000008,skyMid:0x060020,skyBot:0x030015},
+      {fogColor:0x0a0050,fogDens:0.025,hemiSky:0x1a0060,hemiGnd:0x030012,sunCol:0x3300dd,sunInt:0.6,fillCol:0x00eeff,fillInt:1.0,skyTop:0x000012,skyMid:0x080028,skyBot:0x040018},
+      {fogColor:0x06002a,fogDens:0.020,hemiSky:0x220055,hemiGnd:0x040010,sunCol:0x5500ff,sunInt:1.0,fillCol:0x00ffff,fillInt:1.2,skyTop:0x000018,skyMid:0x0c0040,skyBot:0x060020},
+    ],
+  },
+  // 1: TURBO KING — INFERNO SPEEDWAY
+  {
+    spline: [
+      new THREE.Vector3(  0,0, 90), new THREE.Vector3( 45,0, 85),
+      new THREE.Vector3( 85,0, 70), new THREE.Vector3(105,0, 40),
+      new THREE.Vector3(108,0,  0), new THREE.Vector3(105,0,-40),
+      new THREE.Vector3( 85,0,-70), new THREE.Vector3( 45,0,-85),
+      new THREE.Vector3(  0,0,-90), new THREE.Vector3(-45,0,-85),
+      new THREE.Vector3(-85,0,-70), new THREE.Vector3(-105,0,-40),
+      new THREE.Vector3(-108,0,  0), new THREE.Vector3(-105,0, 40),
+      new THREE.Vector3(-85,0, 70), new THREE.Vector3(-45,0, 85),
+    ],
+    obstacles: ['wreck','barrel','barrel','wreck','barrel','barrel','wreck','barrel','wreck','barrel','barrel','wreck'],
+    groundColor: 0x1a0800,
+    groundPatches: [0x280800, 0x1e0600, 0x320a00, 0x240800, 0x1a0500],
+    trunkColor: 0x2a1000,
+    foliageColors: [0x3a1000, 0x2a0800, 0x480c00],
+    bushColor: 0x220800,
+    lampColor: 0xff4400, lampHalo: 0xff2200, lampLight: 0xff5500,
+    shoulderColor: 0x1a0500,
+    lapMsgs: ['LAP 2 — INFERNO 🔥','LAP 3 — MAGMA 🌋','LAP 4 — ERUPTION 💥'],
+    lapAtmos: [
+      {fogColor:0xc05818,fogDens:0.009,hemiSky:0xffcc78,hemiGnd:0x7a4420,sunCol:0xffaa40,sunInt:4.0,fillCol:0x6050c0,fillInt:0.28,skyTop:0x080828,skyMid:0xd04808,skyBot:0x905020},
+      {fogColor:0x8a1a00,fogDens:0.014,hemiSky:0xff6600,hemiGnd:0x4a1800,sunCol:0xff3300,sunInt:3.5,fillCol:0xff6600,fillInt:0.5,skyTop:0x050000,skyMid:0xaa1800,skyBot:0x601000},
+      {fogColor:0x4a0a00,fogDens:0.019,hemiSky:0xcc3300,hemiGnd:0x280800,sunCol:0xff2200,sunInt:2.0,fillCol:0xff4400,fillInt:0.8,skyTop:0x020000,skyMid:0x700c00,skyBot:0x380800},
+      {fogColor:0xcc4400,fogDens:0.011,hemiSky:0xff8800,hemiGnd:0x602000,sunCol:0xffcc00,sunInt:5.0,fillCol:0xff8800,fillInt:0.6,skyTop:0x060000,skyMid:0xff5500,skyBot:0xcc3300},
+    ],
+  },
+  // 2: GRIP MASTER — ARCTIC TRAIL
+  {
+    spline: [
+      new THREE.Vector3(  0,0, 80), new THREE.Vector3( 30,0, 68),
+      new THREE.Vector3( 55,0, 45), new THREE.Vector3( 62,0, 15),
+      new THREE.Vector3( 48,0,-12), new THREE.Vector3( 18,0,-28),
+      new THREE.Vector3(-10,0,-42), new THREE.Vector3(-38,0,-35),
+      new THREE.Vector3(-58,0,-12), new THREE.Vector3(-58,0, 18),
+      new THREE.Vector3(-42,0, 45), new THREE.Vector3(-18,0, 65),
+    ],
+    obstacles: ['tyre','tyre','barrier','tyre','tyre','barrel','tyre','barrier','tyre','tyre','barrel','tyre'],
+    groundColor: 0xdce8f0,
+    groundPatches: [0xe8f2fa, 0xd0e0ec, 0xc8d8e8, 0xe0ecf5, 0xd8e8f0],
+    trunkColor: 0x505870,
+    foliageColors: [0xeef5ff, 0xddeeff, 0xe8f2ff],
+    bushColor: 0xcce0f0,
+    lampColor: 0xaaddff, lampHalo: 0x88ccff, lampLight: 0xaaddff,
+    shoulderColor: 0xb0c8dc,
+    lapMsgs: ['LAP 2 — BLIZZARD ❄️','LAP 3 — ICE CLEAR 🌨','LAP 4 — AURORA ✨'],
+    lapAtmos: [
+      {fogColor:0x8ab0cc,fogDens:0.010,hemiSky:0x90b8d8,hemiGnd:0x6080a0,sunCol:0xaaccee,sunInt:2.0,fillCol:0x4080c0,fillInt:0.5,skyTop:0x182840,skyMid:0x5080b0,skyBot:0x90b8d0},
+      {fogColor:0xb8ccd8,fogDens:0.022,hemiSky:0xc8dce8,hemiGnd:0x8090a0,sunCol:0xddeeff,sunInt:1.2,fillCol:0x8090c0,fillInt:0.3,skyTop:0x304858,skyMid:0x8898a8,skyBot:0xb8c8d8},
+      {fogColor:0x90b8d0,fogDens:0.007,hemiSky:0xb0d0e8,hemiGnd:0x506878,sunCol:0xccddee,sunInt:3.5,fillCol:0x5090d0,fillInt:0.6,skyTop:0x102030,skyMid:0x4070a0,skyBot:0x80b0cc},
+      {fogColor:0x405870,fogDens:0.012,hemiSky:0x304868,hemiGnd:0x182838,sunCol:0x60a0c0,sunInt:1.5,fillCol:0x20c080,fillInt:0.8,skyTop:0x080c18,skyMid:0x183050,skyBot:0x204060},
+    ],
+  },
+  // 3: DIRT RACER — DUST BOWL RALLY
+  {
+    spline: [
+      new THREE.Vector3(  0,0, 72), new THREE.Vector3( 38,0, 62),
+      new THREE.Vector3( 68,0, 38), new THREE.Vector3( 75,0,  5),
+      new THREE.Vector3( 58,0,-28), new THREE.Vector3( 68,0,-55),
+      new THREE.Vector3( 42,0,-78), new THREE.Vector3(  0,0,-80),
+      new THREE.Vector3(-35,0,-65), new THREE.Vector3(-72,0,-38),
+      new THREE.Vector3(-78,0, -5), new THREE.Vector3(-62,0, 32),
+      new THREE.Vector3(-35,0, 58), new THREE.Vector3( -8,0, 72),
+    ],
+    obstacles: ['tyre','wreck','tyre','barrel','tyre','wreck','barrel','tyre','wreck','tyre','barrel','wreck'],
+    groundColor: 0xc8903a,
+    groundPatches: [0xd8a050, 0xb87830, 0xe0a840, 0xc09038, 0xa86828],
+    trunkColor: 0x4a3010,
+    foliageColors: [0x5a6a20, 0x485518, 0x627030],
+    bushColor: 0x6a6020,
+    lampColor: 0xffcc80, lampHalo: 0xffaa50, lampLight: 0xffcc60,
+    shoulderColor: 0xb07830,
+    lapMsgs: ['LAP 2 — DUST STORM 🌪','LAP 3 — LATE SUN 🌅','LAP 4 — DESERT NIGHT 🌙'],
+    lapAtmos: [
+      {fogColor:0xc05818,fogDens:0.009,hemiSky:0xffcc78,hemiGnd:0x7a4420,sunCol:0xffaa40,sunInt:4.0,fillCol:0x6050c0,fillInt:0.28,skyTop:0x080828,skyMid:0xd04808,skyBot:0x905020},
+      {fogColor:0xb05010,fogDens:0.016,hemiSky:0xe89040,hemiGnd:0x603018,sunCol:0xff8800,sunInt:3.0,fillCol:0xc07020,fillInt:0.3,skyTop:0x060402,skyMid:0xb84808,skyBot:0x784018},
+      {fogColor:0x904820,fogDens:0.012,hemiSky:0xff8040,hemiGnd:0x503020,sunCol:0xff6600,sunInt:2.5,fillCol:0x804020,fillInt:0.3,skyTop:0x080402,skyMid:0xcc4408,skyBot:0x904020},
+      {fogColor:0x1a0c04,fogDens:0.018,hemiSky:0x402010,hemiGnd:0x180c08,sunCol:0x805030,sunInt:0.8,fillCol:0x402818,fillInt:0.2,skyTop:0x020100,skyMid:0x180c04,skyBot:0x100802},
+    ],
+  },
+];
+
+function setSkyColors(top, mid, bot){
+  if(skyMat){
+    skyMat.uniforms.topC.value.setHex(top);
+    skyMat.uniforms.midC.value.setHex(mid);
+    skyMat.uniforms.botC.value.setHex(bot);
+  }
+}
+
+function rebuildTrack(vIdx){
+  var cfg = TRACK_CONFIGS[vIdx] || TRACK_CONFIGS[0];
+
+  // 1. Clear old track geometry
+  while(trackGroup.children.length > 0){
+    var obj = trackGroup.children[0];
+    trackGroup.remove(obj);
+    if(obj.geometry) obj.geometry.dispose();
+    if(obj.material){
+      if(Array.isArray(obj.material)) obj.material.forEach(function(m){ m.dispose(); });
+      else obj.material.dispose();
+    }
+  }
+
+  // 2. Update spline
+  var newCtrl = cfg.spline;
+  trackCurve = new THREE.CatmullRomCurve3(newCtrl, true, 'catmullrom', 0.5);
+  splinePts  = trackCurve.getPoints(ROAD_SEG);
+  splineTans = [];
+  for(var si=0; si<=ROAD_SEG; si++) splineTans.push(trackCurve.getTangent(si / ROAD_SEG));
+  N_PTS = splinePts.length;
+
+  // 3. Rebuild road geometry
+  buildRoad();
+  buildEdges();
+  buildCentreMarks();
+  buildStartFinishLine();
+  buildKerbs();
+  buildBarriers();
+
+  // 4. Update car start position
+  var sd0 = newCtrl[1].x - newCtrl[0].x;
+  var sd2 = newCtrl[1].z - newCtrl[0].z;
+  var sdl = Math.sqrt(sd0*sd0 + sd2*sd2);
+  _startDx = sd0/sdl; _startDz = sd2/sdl;
+  START_YAW = Math.atan2(_startDx, _startDz);
+  carYaw = START_YAW;
+  carX = splinePts[0].x;
+  carZ = splinePts[0].z;
+  if(carGroup){
+    carGroup.position.set(carX, 0, carZ);
+    carGroup.rotation.y = carYaw;
+  }
+
+  // 5. Rebuild obstacles with track-specific set
+  var obsTypes = cfg.obstacles.slice();
+  // shuffle
+  for(var si2=obsTypes.length-1; si2>0; si2--){ var sj=Math.floor(Math.random()*(si2+1)); var st=obsTypes[si2]; obsTypes[si2]=obsTypes[sj]; obsTypes[sj]=st; }
+  buildObstacles(obsTypes);
+
+  // 6. Rebuild pickups
+  buildPickups();
+
+  // 7. Rebuild oil slicks
+  buildOilSlicks();
+
+  // 8. Update ground and patch colors
+  if(groundMat) groundMat.color.setHex(cfg.groundColor);
+  var gpc = cfg.groundPatches;
+  for(var gpi=0; gpi<groundPatchMats.length; gpi++){
+    groundPatchMats[gpi].color.setHex(gpc[gpi % gpc.length]);
+  }
+
+  // 9. Update tree colors
+  if(treeTrunkMat) treeTrunkMat.color.setHex(cfg.trunkColor);
+  var fc = cfg.foliageColors;
+  for(var fi2=0; fi2<treefoliageMats.length; fi2++){
+    treefoliageMats[fi2].color.setHex(fc[fi2 % fc.length]);
+  }
+  if(bushMat) bushMat.color.setHex(cfg.bushColor);
+
+  // 10. Update lamp colors
+  if(lampGlowMat){
+    lampGlowMat.color.setHex(cfg.lampColor);
+    lampGlowMat.emissive.setHex(cfg.lampColor);
+  }
+  if(lampHaloMat) lampHaloMat.color.setHex(cfg.lampHalo);
+  for(var li=0; li<lampPointLights.length; li++){
+    lampPointLights[li].color.setHex(cfg.lampLight);
+  }
+
+  // 11. Set starting atmosphere (lap 1)
+  var a = cfg.lapAtmos[0];
+  scene.fog.color.setHex(a.fogColor); scene.fog.density = a.fogDens;
+  hemi.color.setHex(a.hemiSky); hemi.groundColor.setHex(a.hemiGnd);
+  sun.color.setHex(a.sunCol); sun.intensity = a.sunInt;
+  fill.color.setHex(a.fillCol); fill.intensity = a.fillInt;
+  setSkyColors(a.skyTop, a.skyMid, a.skyBot);
+
+  // 12. Store current atmospheres for this track (override global ATMOSPHERES)
+  for(var ai=0; ai<cfg.lapAtmos.length; ai++) ATMOSPHERES[ai] = cfg.lapAtmos[ai];
+
+  currentBuiltTrack = vIdx;
+}
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 var G = {state:'attract', time:0, score:0, shine:0, n:0, laps:0, raceTs:-1};
@@ -3474,6 +3725,7 @@ function startGame(){
   var _sc = new THREE.Color(veh.color);
   DIRTY.setRGB(_sc.r*0.20, _sc.g*0.20, _sc.b*0.20);
   buildCar(selectedVehicle);
+  if(currentBuiltTrack !== selectedVehicle) rebuildTrack(selectedVehicle);
   G.state = 'playing'; G.time = 0; G.score = 0; G.shine = 0; G.n = 0; G.laps = 0; G.raceTs = -1;
   carSpeed = 0; oilT = 0;
   boostCharge = 0; boostActive = false; boostT = 0; boostWasReady = false;
@@ -4100,7 +4352,8 @@ function animate(ts){
         endGame();
         return;
       }
-      var lapMsgs = ['LAP 2 — NIGHT! 🌙','LAP 3 — DAWN! 🌅','LAP 4 — STORM! ⛈'];
+      var cfg2 = TRACK_CONFIGS[selectedVehicle] || TRACK_CONFIGS[0];
+      var lapMsgs = cfg2.lapMsgs || ['LAP 2 — NIGHT! 🌙','LAP 3 — DAWN! 🌅','LAP 4 — STORM! ⛈'];
       var lapMsg  = lapMsgs[G.laps - 2] || ('LAP ' + G.laps + '!');
       showNotif(lapMsg, '#00b84a');
       beep(660, 0.12, 0.18);
